@@ -1,0 +1,20 @@
+%turbo-frame{ data: { controller: 'tree-view'}, "data-turbo-frame-target": 'frame', id: "tree-frame" }
+  .tree_wrapper.hide-if-loading
+    %ul.simpleTree
+      %li.root
+        %ul
+          = draw_tree(@root, @concept.id, (params[:concept_schemes] || '').split(','))
+
+= javascript_tag do
+  :plain
+    $(document).on('click', '.fa-minus-square', function(event) {
+    event.preventDefault();
+
+    // Toggle the 'fa-minus-square' and 'fa-plus-square' classes for the clicked element.
+    $(this).toggleClass('fa-minus-square fa-plus-square');
+
+    // Find the elements under the clicked element's parent and toggle their visibility.
+    $(this).parent().parent().children().children().children().toggle();
+    $(this).toggleClass('fa-minus-square');
+    });
+
