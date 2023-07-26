@@ -307,9 +307,6 @@ module ApplicationHelper
 
   def child_id(child)
     child.id.to_s.split('/').last
-    concept_schemes = concept_schemes.map{|x| CGI.escape(x)}.join(',')
-    link = "<a id='#{child.id}' href='/ajax_concepts/#{child.explore.ontology.acronym}/?conceptid=#{CGI.escape(child.id)}&concept_schemes=#{concept_schemes}&callback=children&language=#{language}'>ajax_class</a>"
-    "<ul class='ajax'><li id='#{li_id}'>#{link}</li></ul>"
   end
 
   def children_link(child,concept_schemes, language)
