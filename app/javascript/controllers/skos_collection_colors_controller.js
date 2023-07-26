@@ -31,7 +31,7 @@ export default class extends Controller {
 
 
     collectionTargetConnected(collectionElem) {
-        if (this.selected.length > 0) {
+        if (this.selected && this.selected.length > 0) {
             this.#updateColorsTags(collectionElem)
         }
     }
