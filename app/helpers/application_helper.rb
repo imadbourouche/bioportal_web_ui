@@ -174,12 +174,16 @@ module ApplicationHelper
 
       if child.id.eql?('bp_fake_root')
         string << tree_link_to_concept(child: child, ontology_acronym: '',
-                                       active_style: active_style, node: node)
+                                       active_style: active_style, 
+                                       node: node, concept_schemes: concept_schemes)
       else
         string << tree_link_to_concept(child: child, ontology_acronym: child.explore.ontology.acronym,
-                                       active_style: active_style, node: node)
+                                       active_style: active_style, 
+                                       node: node,
+                                       concept_schemes: concept_schemes)
+
         if child.hasChildren && !child.expanded?
-          string << tree_link_to_children(child: child, concept_schemes: concept_schemes)
+          string << render(TurboFrameComponent.new(id:"#{child_id(child)}_childs"))
         elsif child.expanded?
           string << '<ul>'
           build_tree(child, string, id, concept_schemes: concept_schemes)
@@ -191,14 +195,19 @@ module ApplicationHelper
     string
   end
 
-  def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil)
+  def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil, concept_schemes: nil)
     language = request_lang
     li_id = child.id.eql?('bp_fake_root') ? 'bp_fake_root' : short_uuid
     open = child.expanded? ? "class='open'" : ''
     icons = child.relation_icon(node)
     muted_style = child.isInActiveScheme&.empty? ? 'text-muted' : ''
     href = ontology_acronym.blank? ? '#' : "/ontologies/#{child.explore.ontology.acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
+    concept_schemes = concept_schemes&.map{|x| CGI.escape(x)}&.join(',')
+    open_children_link =  "<a data-turbo=true data-turbo-frame='#{child_id(child)+'_childs'}' href='#{children_link(child,concept_schemes, language)}'> <i class='far fa-plus-square'></i> </a>"
     link = <<-EOS
+        <trubo_frame id="#{child_id(child)}_open_link">
+          #{child.hasChildren ?  open_children_link : ''}
+        </trubo_frame>
         <a id='#{child.id}' data-conceptid='#{child.id}'
            data-turbo=true data-turbo-frame='concept_show' href='#{href}' 
            data-collections-value='#{child.memberOf || []}'
@@ -212,12 +221,16 @@ module ApplicationHelper
     "<li #{open} id='#{li_id}'>#{link} #{icons}"
   end
 
-  def tree_link_to_children(child:, concept_schemes: [])
-    language = request_lang
-    li_id = child.id.eql?('bp_fake_root') ? 'bp_fake_root' : short_uuid
+
+  def child_id(child)
+    child.id.to_s.split('/').last
     concept_schemes = concept_schemes.map{|x| CGI.escape(x)}.join(',')
     link = "<a id='#{child.id}' href='/ajax_concepts/#{child.explore.ontology.acronym}/?conceptid=#{CGI.escape(child.id)}&concept_schemes=#{concept_schemes}&callback=children&language=#{language}'>ajax_class</a>"
     "<ul class='ajax'><li id='#{li_id}'>#{link}</li></ul>"
+  end
+
+  def children_link(child,concept_schemes, language)
+    "/ajax_concepts/#{child.explore.ontology.acronym}/?conceptid=#{CGI.escape(child.id)}&concept_schemes=#{concept_schemes}&callback=children&language=#{language}"
   end
 
   def loading_spinner(padding = false, include_text = true)

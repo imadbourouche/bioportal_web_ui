@@ -3,6 +3,9 @@ require 'cgi'
 class ConceptsController < ApplicationController
   include MappingsHelper
   include ConceptsHelper
+  include TurboHelper
+  include ApplicationHelper
+  
   layout 'ontology'
 
   def show_concept
@@ -54,7 +57,7 @@ class ConceptsController < ApplicationController
       @concept = @ontology.explore.single_class({full: true}, params[:id])
       concept_not_found(params[:id]) if @concept.nil?
       @schemes = params[:concept_schemes].split(',')
-      show_ajax_request # process a full call
+      show_ajax_request(turbo: true) # process a full call
     end
   end
 
@@ -183,7 +186,7 @@ class ConceptsController < ApplicationController
 # PRIVATE -----------------------------------------
 private
 
-  def show_ajax_request
+  def show_ajax_request(turbo: false)
     case params[:callback]
     when 'load' # Load pulls in all the details of a node
       gather_details
@@ -191,7 +194,16 @@ private
     when 'children' # Children is called only for drawing the tree
       @children = @concept.explore.children(pagesize: 750, concept_schemes: @schemes.join(','), language: request_lang, display: 'prefLabel,obsolete,hasChildren').collection || []
       @children.sort! { |x, y| (x.prefLabel || "").downcase <=> (y.prefLabel || "").downcase } unless @children.empty?
-      render :partial => 'child_nodes'
+      if turbo
+        render turbo_stream: [
+          replace(child_id(@concept)+'_open_link') do 
+             "<a href=''> <i class='far fa-minus-square'></i> </a>".html_safe
+          end,
+          replace(child_id(@concept)+'_childs', partial: 'child_nodes')
+        ]
+      else 
+        render :partial => 'child_nodes'
+      end
     end
   end
 
