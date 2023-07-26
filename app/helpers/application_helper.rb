@@ -155,6 +155,89 @@ module ApplicationHelper
     end
   end
 
+  def get_class(params)
+
+    lang = "EN"
+    
+    if @ontology.flat?
+
+      ignore_concept_param = params[:conceptid].nil? ||
+          params[:conceptid].empty? ||
+          params[:conceptid].eql?("root") ||
+          params[:conceptid].eql?("bp_fake_root")
+      if ignore_concept_param
+        # Don't display any classes in the tree
+        @concept = LinkedData::Client::Models::Class.new
+        @concept.prefLabel = "Please search for a class using the Jump To field above"
+        @concept.obsolete = false
+        @concept.id = "bp_fake_root"
+        @concept.properties = {}
+        @concept.children = []
+      else
+        # Display only the requested class in the tree
+        @concept = @ontology.explore.single_class({full: true, lang: lang }, params[:conceptid])
+        @concept.children = []
+      end
+      @root = LinkedData::Client::Models::Class.new
+      @root.children = [@concept]
+
+    else
+
+      # not ignoring 'bp_fake_root' here
+      include = 'prefLabel,hasChildren,obsolete'
+      ignore_concept_param = params[:conceptid].nil? ||
+          params[:conceptid].empty? ||
+          params[:conceptid].eql?("root")
+      if ignore_concept_param
+        # get the top level nodes for the root
+        # TODO_REV: Support views? Replace old view call: @ontology.top_level_classes(view)
+        roots = @ontology.explore.roots(concept_schemes: params[:concept_schemes], lang: lang, include: include)
+        if roots.nil? || roots.empty?
+          LOG.add :debug, "Missing roots for #{@ontology.acronym}"
+          not_found("Missing roots for #{@ontology.acronym}")
+        end
+        @root = LinkedData::Client::Models::Class.new(read_only: true)
+        @root.children = roots.sort{|x,y| (x.prefLabel || "").downcase <=> (y.prefLabel || "").downcase}
+
+        # get the initial concept to display
+        root_child = @root.children.first
+
+        @concept = root_child.explore.self(full: true, lang: lang)
+        # Some ontologies have "too many children" at their root. These will not process and are handled here.
+        if @concept.nil?
+          LOG.add :debug, "Missing class #{root_child.links.self}"
+          not_found("Missing class #{root_child.links.self}")
+        end
+      else
+        # if the id is coming from a param, use that to get concept
+        @concept = @ontology.explore.single_class({full: true, lang: lang}, params[:conceptid])
+        if @concept.nil? || @concept.errors
+          LOG.add :debug, "Missing class #{@ontology.acronym} / #{params[:conceptid]}"
+          not_found("Missing class #{@ontology.acronym} / #{params[:conceptid]}")
+        end
+
+        # Create the tree
+        rootNode = @concept.explore.tree(include: include, concept_schemes: params[:concept_schemes], lang: lang)
+        if rootNode.nil? || rootNode.empty?
+          roots = @ontology.explore.roots(concept_schemes: params[:concept_schemes], lang: lang, include: include)
+          if roots.nil? || roots.empty?
+            LOG.add :debug, "Missing roots for #{@ontology.acronym}"
+            not_found("Missing roots for #{@ontology.acronym}")
+          end
+          if roots.any? {|c| c.id == @concept.id}
+            rootNode = roots
+          else
+            rootNode = [@concept]
+          end
+        end
+        @root = LinkedData::Client::Models::Class.new(read_only: true)
+        @root.children = rootNode.sort{|x,y| (x.prefLabel || "").downcase <=> (y.prefLabel || "").downcase}
+      end
+    end
+
+    @concept
+  end
+
   def draw_tree(root, id = nil, concept_schemes = [])
     id = root.children.first.id if id.nil?
 
