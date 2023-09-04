@@ -16,4 +16,4 @@
                         'chosen-enable-colors-value': 'true'}}
   -# Class tree
   %div#sd_content.card.p-1.py-3{style: 'overflow-y: scroll; height: 60vh;'}
-    = render TreeViewComponent.new([], @ontology, @concept.id,  params[:concept_schemes], "EN", params, data: {'turbo-frame-target': 'frame'})
+    = render TreeViewComponent.new(@ontology, @concept.id,  params[:concept_schemes], "EN", params)

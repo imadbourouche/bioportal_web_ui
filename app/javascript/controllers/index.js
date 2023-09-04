@@ -49,8 +49,7 @@ application.register("platform-language", PlatformLanguageController)
 import ShowModalController from "./show_modal_controller"
 application.register("show-modal", ShowModalController)
 
-import SimpleTreeController from "./simple_tree_controller"
-application.register("simple-tree", SimpleTreeController)
+
 
 import SkosCollectionColorsController from "./skos_collection_colors_controller"
 application.register("skos-collection-colors", SkosCollectionColorsController)
@@ -72,3 +71,6 @@ application.register("turbo-frame", TurboFrameController)
 
 import TurboFrameErrorController from "./turbo_frame_error_controller"
 application.register("turbo-frame-error", TurboFrameErrorController)
+
+import ToggleController from "./toggle_controller"
+application.register("toggle", ToggleController)

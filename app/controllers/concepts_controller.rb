@@ -197,7 +197,7 @@ private
       if turbo
         render turbo_stream: [
           replace(child_id(@concept)+'_open_link') do 
-             "<a href=''> <i class='far fa-minus-square'></i> </a>".html_safe
+             "<a href='#'> <i class='far fa-minus-square' data-target='toggleIcon' data-action='click->toggle#toggle'></i> </a>".html_safe
           end,
           replace(child_id(@concept)+'_childs', partial: 'child_nodes')
         ]
