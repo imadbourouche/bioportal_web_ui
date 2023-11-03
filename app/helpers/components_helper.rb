@@ -8,7 +8,9 @@ module ComponentsHelper
   end
   
   def properties_list_component(c, properties, &block)
-    properties.each do |k, v|
+    properties.each do |k, value|
+
+      v, label = value
       c.row do
         content = if block_given?
                     capture(v, &block)
