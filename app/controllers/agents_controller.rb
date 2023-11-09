@@ -7,8 +7,9 @@ class AgentsController < ApplicationController
   end
 
   def show
-    @agent = LinkedData::Client::Models::Agent.find(params[:id])
-    not_found("Agent with id #{@agent.id}") if @agent.nil?
+    # we use :agent_id not :id
+    @agent = LinkedData::Client::Models::Agent.find(params[:agent_id])
+    not_found("Agent with id #{params[:agent_id]}") if @agent.nil?
 
     @agent_id = params[:id] || agent_id(@agent)
     @name_prefix = params[:name_prefix] ? "#{params[:name_prefix]}[#{params[:id]}]" : ''
@@ -188,7 +189,7 @@ class AgentsController < ApplicationController
     current_usages = helpers.agents_used_properties(agent)
     new_usages = params
 
-    changed_usages = new_usages.select { |x, v| !((current_usages[x] - v) + (v - current_usages[x])).empty? }
+    changed_usages = new_usages.empty? ? current_usages :  new_usages.select { |x, v| !((current_usages[x] - v) + (v - current_usages[x])).empty? }
     changed_usages = changed_usages.reduce({}) do |h, attr_acronyms|
       attr, acronyms = attr_acronyms
       acronyms.each do |acronym|
