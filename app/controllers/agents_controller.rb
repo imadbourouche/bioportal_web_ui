@@ -100,7 +100,7 @@ class AgentsController < ApplicationController
 
   def update_agent_usages
     agent = find_agent_display_all
-    responses = update_agent_usages_action(agent, agent_usages_params)
+    responses, new_usages = update_agent_usages_action(agent, agent_usages_params)
     parent_id = params[:parent_id]
     alert_id = agent_alert_container_id(agent, parent_id)
 
@@ -116,7 +116,7 @@ class AgentsController < ApplicationController
 
       success_message = 'Agent usages successfully updated'
       table_line_id = agent_table_line_id(agent_id(agent))
-
+      agent.usages = new_usages
       streams = [alert_success(id: alert_id) { success_message },
                  replace(table_line_id, partial: 'agents/show_line', locals: { agent: agent })
       ]
@@ -189,8 +189,16 @@ class AgentsController < ApplicationController
     current_usages = helpers.agents_used_properties(agent)
     new_usages = params
 
-    changed_usages = new_usages.empty? ? current_usages :  new_usages.select { |x, v| !((current_usages[x] - v) + (v - current_usages[x])).empty? }
-    changed_usages = changed_usages.reduce({}) do |h, attr_acronyms|
+    diffs = current_usages.keys.each_with_object({}) do |key, result|
+      removed_values = current_usages[key] - Array(new_usages[key])
+      added_values = Array(new_usages[key]) - current_usages[key]
+      result[key] =  removed_values +  added_values
+    end
+
+    # changed_usages = new_usages.empty? ? current_usages :  new_usages.select { |x, v| !((current_usages[x] - v) + (v - current_usages[x])).empty? }
+
+
+    changed_usages = diffs.reduce({}) do |h, attr_acronyms|
       attr, acronyms = attr_acronyms
       acronyms.each do |acronym|
         h[acronym] ||= []
@@ -201,7 +209,7 @@ class AgentsController < ApplicationController
     responses = {}
     changed_usages.each do |ontology, attrs|
       ontology = LinkedData::Client::Models::Ontology.find_by_acronym(ontology).first
-      sub = ontology.explore.latest_submission({ include: 'all' })
+      sub = ontology.explore.latest_submission({ include: attrs.join(',') })
       values = {}
       attrs.each do |attr|
         current_val = sub.send(attr)
@@ -221,7 +229,7 @@ class AgentsController < ApplicationController
       responses[ontology] = sub.update(values: values, cache_refresh_all: false)
     end
 
-    responses
+    [responses, new_usages]
   end
 
   def agent_usages_params
