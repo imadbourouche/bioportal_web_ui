@@ -1,0 +1,47 @@
+version: '7.1'
+
+# Define default environment variables to pass
+# to Docker Compose
+environment:
+  API_URL: ${API_URL}
+
+compose:
+  files:
+    - .docker-compose.yml
+  project_name: ontoportal_web_ui
+
+interaction:
+  # This command spins up a ontologies_api container with the required dependencies (solr, 4store, etc),
+  # and opens a terminal within it.
+  rails:
+    description: Open a Bash shell within a ontologies_api container (with dependencies up)
+    service: rails
+    command: bundle exec rails
+    compose:
+      run_options: [ service-ports, use-aliases ]
+
+
+
+  # Run a Rails container without any dependent services (useful for non-Rails scripts)
+  bash:
+    description: Run an arbitrary script within a container (or open a shell without deps)
+    service: rails
+    command: bash
+    compose_run_options: [no-deps]
+
+  # A shortcut to run Bundler commands
+  bundle:
+    description: Run Bundler commands
+    service: rails
+    command: bundle
+    compose_run_options: [ no-deps ]
+
+  test:
+    description: Open a Bash shell within a ontologies_api container (with dependencies up)
+    service: test
+    command: bundle exec rails test -v
+
+provision:
+  - dip compose down --volumes
+  - dip compose up -d db cache node
+  - dip bash -c bin/setup

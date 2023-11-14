@@ -1,50 +1,44 @@
-FROM ruby:2.7.5-alpine AS app
+# Make sure it matches the Ruby version in .ruby-version and Gemfile
+ARG RUBY_VERSION=3.2.0
+FROM ruby:${RUBY_VERSION}-alpine
 
+# Install libvips for Active Storage preview support
+RUN apk add --no-cache build-base \
+                       libxml2-dev \
+                       libxslt-dev \
+                       mariadb-dev \
+                       git \
+                       tzdata \
+                       nodejs yarn \
+                       less \
+                       bash \
+                       docker \
+                       docker-compose \
+    && mkdir /node_modules
+
+# Rails app lives here
 WORKDIR /app
 
-ARG UID=1000
-ARG GID=1000
-
-RUN apk add --no-cache \
-    build-base \
-    libxml2-dev \
-    libxslt-dev \
-    mariadb-dev \
-    git \
-    nodejs \
-    tzdata \
-    yarn \
-    less \
-  && addgroup --gid ${GID} ruby \
-  && adduser  -u ${UID} -G ruby -D  ruby \
-  && chown ruby:ruby -R /app \
-  && mkdir /node_modules \
-  && chown ruby:ruby -R /node_modules /app
-
-USER ruby
-
-COPY --chown=ruby:ruby bin/ ./bin
-RUN chmod 0755 bin/*
-
+# Set production environment
 ARG RAILS_ENV="production"
 
-ENV RAILS_ENV="${RAILS_ENV}" \
-    NODE_ENV="${NODE_ENV}" \
-    PATH="${PATH}:/home/ruby/.local/bin:/node_modules/.bin" \
-    USER="ruby" \
+ENV RAILS_LOG_TO_STDOUT="1" \
+    RAILS_SERVE_STATIC_FILES="true" \
+    RAILS_ENV="${RAILS_ENV}" \
     BUNDLE_PATH=/usr/local/bundle
 
-COPY --chown=ruby:ruby Gemfile* ./
-RUN bundle install --jobs "$(nproc)"
-RUN gem install rails 
+RUN gem update --system && \
+    gem install bundler
 
-
+COPY Gemfile* .
+RUN bundle install
+RUN gem install rails
 
 RUN echo "--modules-folder /node_modules" > .yarnrc
-COPY --chown=ruby:ruby package.json *yarn* ./
+COPY package.json *yarn* ./
 RUN yarn install
 
-
+ENV BINDING="0.0.0.0"
 EXPOSE 3000
 
-CMD ["sh"]
+CMD ["bash"]
