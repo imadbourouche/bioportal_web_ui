@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+if ARGV.include?('-f')
+  system("rm -fr tmp/ontoportal_docker")
+end
+
+unless Dir.exists?("tmp/ontoportal_docker")
+  system("git clone  --depth=1 https://github.com/syphax-bouazzouni/ontoportal_docker.git tmp/ontoportal_docker")
+end
+
+env_file_path = File.expand_path('../.env', __dir__)
+
+# Read and parse the .env file
+if File.exist?(env_file_path)
+  File.readlines(env_file_path).each do |line|
+    next unless line.include?('=')
+    key, value = line.strip.split('=', 2)
+    ENV[key] = value
+  end
+end
+Dir.chdir("tmp/ontoportal_docker") do
+  ARGV.delete('-f')
+
+  require 'optparse'
+
+  # Default values
+  options = {
+    api_key: ENV["OP_API_KEY"],
+    image_repository: ENV["API_IMAGE_REPOSITORY"],
+    image_tag:  ENV["API_IMAGE_TAG"],
+    starter_ontology: ENV["STARTER_ONTOLOGY"],
+    remote_api_url: ENV["OP_API_URL"]
+  }
+
+  OptionParser.new do |opts|
+    opts.banner = "Usage: run.rb [options]"
+
+    opts.on("-k", "--api-key API_KEY", "API key") do |api_key|
+      options[:api_key] = api_key
+    end
+
+    opts.on("-r", "--image-repository REPOSITORY", "Image repository") do |image_repository|
+      options[:image_repository] = image_repository
+    end
+
+    opts.on("-t", "--image-tag TAG", "Image tag") do |image_tag|
+      options[:image_tag] = image_tag
+    end
+
+    opts.on("-s", "--starter-ontology ONTOLOGY", "Starter ontology") do |starter_ontology|
+      options[:starter_ontology] = starter_ontology
+    end
+
+    opts.on("-u", "--remote-api-url URL", "Remote API URL") do |remote_api_url|
+      options[:remote_api_url] = remote_api_url
+    end
+  end.parse!
+
+
+  unless system("./run -k #{options[:api_key]} -r #{options[:image_repository]} -t #{options[:image_tag]} -s #{options[:starter_ontology]} -u #{options[:remote_api_url]}")
+    exit 1
+  end
+end
