@@ -286,7 +286,7 @@ module ApplicationHelper
     muted_style = child.isInActiveScheme&.empty? ? 'text-muted' : ''
     href = ontology_acronym.blank? ? '#' : "/ontologies/#{child.explore.ontology.acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
     concept_schemes = concept_schemes&.map{|x| CGI.escape(x)}&.join(',')
-    open_children_link =  "<a data-turbo=true data-turbo-frame='#{child_id(child)+'_childs'}' href='#{children_link(child,concept_schemes, language)}'> <i class='far fa-plus-square'></i> </a>"
+    open_children_link =  "<a data-turbo=true data-turbo-frame='#{child_id(child)+'_childs'}' href='#{children_link(child,concept_schemes, language)}'> <i class='far fa-plus-square' style='margin-left: -18px'></i> </a>"
     link = <<-EOS
         <trubo_frame id="#{child_id(child)}_open_link">
           #{child.hasChildren ?  open_children_link : ''}
