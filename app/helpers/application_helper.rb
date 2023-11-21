@@ -238,71 +238,33 @@ module ApplicationHelper
     @concept
   end
 
-  def draw_tree(root, id = nil, concept_schemes = [])
-    id = root.children.first.id if id.nil?
 
-    # TODO: handle tree view for obsolete classes, e.g. 'http://purl.obolibrary.org/obo/GO_0030400'
-    raw build_tree(root, '', id, concept_schemes: concept_schemes)
-  end
-
-  def build_tree(node, string, id, concept_schemes: [])
-
-    return string if node.children.nil? || node.children.empty?
-
-    node.children.sort! { |a, b| (a.prefLabel || a.id).downcase <=> (b.prefLabel || b.id).downcase }
-    node.children.each do |child|
-      active_style = child.id.eql?(id) ? "active" : ''
-
-      # This fake root will be present at the root of "flat" ontologies, we need to keep the id intact
-
-      if child.id.eql?('bp_fake_root')
-        string << tree_link_to_concept(child: child, ontology_acronym: '',
-                                       active_style: active_style, 
-                                       node: node, concept_schemes: concept_schemes)
-      else
-        string << tree_link_to_concept(child: child, ontology_acronym: child.explore.ontology.acronym,
-                                       active_style: active_style, 
-                                       node: node,
-                                       concept_schemes: concept_schemes)
-
-        if child.hasChildren && !child.expanded?
-          string << render(TurboFrameComponent.new(id:"#{child_id(child)}_childs"))
-        elsif child.expanded?
-          string << '<ul>'
-          build_tree(child, string, id, concept_schemes: concept_schemes)
-          string << '</ul>'
-        end
-        string << '</li>'
-      end
+    # TODO make this a component, and update its usages  
+    def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil, concept_schemes: nil)
+      language = request_lang
+      li_id = child.id.eql?('bp_fake_root') ? 'bp_fake_root' : short_uuid
+      open = child.expanded? ? "class='open'" : ''
+      icons = child.relation_icon(node)
+      muted_style = child.isInActiveScheme&.empty? ? 'text-muted' : ''
+      href = ontology_acronym.blank? ? '#' : "/ontologies/#{child.explore.ontology.acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
+      concept_schemes = concept_schemes&.map{|x| CGI.escape(x)}&.join(',')
+      open_children_link =  "<a data-turbo=true data-turbo-frame='#{child_id(child)+'_childs'}' href='#{children_link(child,concept_schemes, language)}'> <i class='far fa-plus-square' style='margin-left: -18px'></i> </a>"
+      link = <<-EOS
+          <trubo_frame id="#{child_id(child)}_open_link">
+            #{child.hasChildren ?  open_children_link : ''}
+          </trubo_frame>
+          <a id='#{child.id}' data-conceptid='#{child.id}'
+             data-turbo=true data-turbo-frame='concept_show' href='#{href}' 
+             data-collections-value='#{child.memberOf || []}'
+             data-active-collections-value='#{child.isInActiveCollection || []}'
+             data-skos-collection-colors-target='collection'
+              class='#{muted_style} #{active_style}'>
+              #{child.prefLabel ? child.prefLabel({ use_html: true }) : child.id.split('/').last}
+          </a>
+      EOS
+  
+      "<li #{open} id='#{li_id}'>#{link} #{icons}"
     end
-    string
-  end
-
-  def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil, concept_schemes: nil)
-    language = request_lang
-    li_id = child.id.eql?('bp_fake_root') ? 'bp_fake_root' : short_uuid
-    open = child.expanded? ? "class='open'" : ''
-    icons = child.relation_icon(node)
-    muted_style = child.isInActiveScheme&.empty? ? 'text-muted' : ''
-    href = ontology_acronym.blank? ? '#' : "/ontologies/#{child.explore.ontology.acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
-    concept_schemes = concept_schemes&.map{|x| CGI.escape(x)}&.join(',')
-    open_children_link =  "<a data-turbo=true data-turbo-frame='#{child_id(child)+'_childs'}' href='#{children_link(child,concept_schemes, language)}'> <i class='far fa-plus-square' style='margin-left: -18px'></i> </a>"
-    link = <<-EOS
-        <trubo_frame id="#{child_id(child)}_open_link">
-          #{child.hasChildren ?  open_children_link : ''}
-        </trubo_frame>
-        <a id='#{child.id}' data-conceptid='#{child.id}'
-           data-turbo=true data-turbo-frame='concept_show' href='#{href}' 
-           data-collections-value='#{child.memberOf || []}'
-           data-active-collections-value='#{child.isInActiveCollection || []}'
-           data-skos-collection-colors-target='collection'
-            class='#{muted_style} #{active_style}'>
-            #{child.prefLabel ? child.prefLabel({ use_html: true }) : child.id.split('/').last}
-        </a>
-    EOS
-
-    "<li #{open} id='#{li_id}'>#{link} #{icons}"
-  end
 
 
   def child_id(child)
