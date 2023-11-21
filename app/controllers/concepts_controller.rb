@@ -197,7 +197,7 @@ private
       if turbo
         render turbo_stream: [
           replace(child_id(@concept)+'_open_link') do 
-             "<i class='far fa-minus-square' style='margin-left: -18px' data-action='click->toggle#toggle'></i>".html_safe
+             "<i class='far fa-minus-square' style='margin-left: -18px' data-action='click->simple-tree#toggleChildren'></i>".html_safe
           end,
           replace(child_id(@concept)+'_childs', partial: 'child_nodes')
         ]

@@ -24,6 +24,15 @@ export default class extends Controller {
         this.#onClickTooManyChildrenInit()
     }
 
+    toggleChildren(event) {
+        event.preventDefault();    
+        event.target.classList.toggle("fa-minus-square");
+        event.target.classList.toggle("fa-plus-square");
+    
+        event.target.nextElementSibling.nextElementSibling.classList.toggle("hidden");
+    }
+    
+    
     #onClickTooManyChildrenInit() {
         jQuery(".too_many_children_override").live('click', (event) => {
             event.preventDefault();
