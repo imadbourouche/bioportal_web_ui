@@ -1,6 +1,4 @@
 import {Controller} from "@hotwired/stimulus"
-import {useSimpleTree} from "../mixins/useSimpleTree";
-
 // Connects to data-controller="simple-tree"
 export default class extends Controller {
 
@@ -8,13 +6,7 @@ export default class extends Controller {
         autoClick: {type: Boolean, default: false}
     }
 
-    connect() {
-        this.simpleTreeCollection = useSimpleTree(this.element,
-            this.#afterClick.bind(this),
-            this.#afterAjaxError.bind(this),
-            this.#beforeAjax.bind(this)
-        )
-
+    connect() { 
 
         this.simpleTreeCollection.ready(() => {
             let activeElem = this.element.querySelector('a.active')
