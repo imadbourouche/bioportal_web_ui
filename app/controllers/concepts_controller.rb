@@ -208,23 +208,13 @@ private
   end
 
   # gathers the full set of data for a node
-  def show_uri_request
-    gather_details
-    build_tree
-  end
 
   def gather_details
     @notes = @concept.explore.notes
     update_tab(@ontology, @concept.id) #updates the 'history' tab with the current node
   end
 
-  def build_tree
-    # find path to root
-    rootNode = @concept.explore.tree(include: "prefLabel,hasChildren,obsolete,subClassOf")
-    @root = LinkedData::Client::Models::Class.new(read_only: true)
-    @root.children = rootNode unless rootNode.nil?
-  end
-
+  
   def filter_concept_with_no_date(concepts)
     concepts.filter { |c| !concept_date(c).nil?}
   end
