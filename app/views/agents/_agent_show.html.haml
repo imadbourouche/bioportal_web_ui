@@ -1,4 +1,6 @@
-= render TurboFrameComponent.new(id: agent_frame_id(agent, parent_id)) do
+- deletable ||= false
+- frame_id ||= agent_frame_id(agent, parent_id)
+= render TurboFrameComponent.new(id: frame_id) do
   %div.d-flex
     - return agent if agent.is_a? String
     - if agent.id
@@ -11,3 +13,5 @@
         = link_to_agent_edit_modal(agent, parent_id)
       - else
         = link_to_agent_edit(agent, parent_id)
+    - if deletable
+      = link_to_search_agent(parent_id, agent.agentType, deletable)

@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
 
   root to: 'home#index'
+  mount LetterOpenerWeb::Engine, at: "/letter_opener" if Rails.env.development?
 
   get 'auth/:provider/callback', to: 'login#create_omniauth'
   get 'locale/:language', to: 'language#set_locale_language'
@@ -10,6 +11,7 @@ Rails.application.routes.draw do
   get '/notes/new_reply', to: 'notes#new_reply'
   delete '/notes', to: 'notes#destroy'
   resources :notes, constraints: { id: /.+/ }
+  get 'agents/show_search', to: 'agents#show_search'
   get 'agents/:id/usages', to: 'agents#agent_usages', constraints: { id: /.+/ }
   post 'agents/:id/usages', to: 'agents#update_agent_usages', constraints: { id: /.+/ }
   resources :agents, constraints: { id: /.+/ }
@@ -51,6 +53,7 @@ Rails.application.routes.draw do
     get 'instances/:instance_id', to: 'instances#show', constraints: { instance_id: /[^\/?]+/ }
     get 'schemes/show_scheme', to: 'schemes#show'
     get 'collections/show'
+    get 'metrics'
     get 'metrics_evolution'
   end
 
@@ -125,6 +128,8 @@ Rails.application.routes.draw do
   get '/ontologies/:acronym/: f', to: 'ontologies#show', constraints: { purl_conceptid: /[^\/]+/ }
   match '/ontologies/:acronym/submissions/:id/edit_metadata' => 'submissions#edit_metadata', via: [:get, :post]
   get '/ontologies_filter', to:  'ontologies#ontologies_filter'
+
+  get '/ontologies/:acronym/properties/show', to: 'properties#show'
 
   # Analytics
   get '/analytics/:action' => 'analytics#(?-mix:search_result_clicked|user_intention_surveys)'

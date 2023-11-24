@@ -305,13 +305,6 @@ module ApplicationHelper
     end
   end
 
-  def anonymous_user
-    #
-    # TODO: Fix and failures from removing 'DataAccess' call here.
-    #
-    #user = DataAccess.getUser($ANONYMOUS_USER)
-    user ||= User.new({"id" => 0})
-  end
 
   def render_advanced_picker(custom_ontologies = nil, selected_ontologies = [], align_to_dom_id = nil)
     selected_ontologies ||= []
@@ -475,6 +468,15 @@ module ApplicationHelper
     render OntologySubscribeButtonComponent.new(ontology_id: ontology_id, subscribed: subscribed, user_id: user_id, count: count, link: link)
   end
 
+  def admin_block(ontology: @ontology, user: session[:user], class_css: "admin-border", &block)
+    if ontology.admin?(user)
+      content_tag(:div, class: class_css) do
+        capture(&block) if block_given?
+      end
+    end
+  end
+
+
   def subscribed_to_ontology?(ontology_acronym, user)
     user.bring(:subscription) if user.subscription.nil?
     # user.subscription is an array of subscriptions like {ontology: ontology_id, notification_type: "NOTES"}
@@ -620,7 +622,7 @@ module ApplicationHelper
 
   ###END ruby equivalent of JS code in bp_ajax_controller.
   def ontology_viewer_page_name(ontology_name, concept_label, page)
-    ontology_name + " | " + main_language_label(concept_label) + " - #{page.capitalize}"
+    ontology_name + " | "  + " #{page.capitalize}"
   end
   def help_path(anchor: nil)
     "#{Rails.configuration.settings.links[:help]}##{anchor}"

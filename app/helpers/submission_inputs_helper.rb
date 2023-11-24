@@ -10,6 +10,9 @@ module SubmissionInputsHelper
       @label = label
     end
 
+    def attr_key
+      @attribute_key
+    end
     def attr
       @attribute_key
     end
@@ -51,7 +54,11 @@ module SubmissionInputsHelper
                                        attr_metadata: attr_metadata(attr_key))
 
     if attr.type?('Agent')
-      generate_agent_input(attr)
+      if attr.type?('list')
+        generate_list_agent_input(attr)
+      else
+        # generate_agent_input(attr)
+      end
     elsif attr.type?('integer')
       generate_integer_input(attr)
     elsif attr.type?('date_time')
@@ -204,7 +211,7 @@ module SubmissionInputsHelper
   end
 
   # @param attr_key string
-  def attr_label(attr_key, label = nil, attr_metadata: nil, show_tooltip: true)
+  def attr_label(attr_key, label = nil, attr_metadata: attr_metadata(attr_key), show_tooltip: true)
 
     data = SubmissionMetadataInput.new(attribute_key: attr_key.to_s, attr_metadata: attr_metadata)
     if show_tooltip
@@ -232,6 +239,27 @@ module SubmissionInputsHelper
   end
 
   def generate_agent_input(attr)
+    attr_key = attr.metadata['attribute'].to_s
+    agent = attr.values
+    render Input::InputFieldComponent.new(name: '', label: attr_header_label(attr), error_message: attribute_error(attr.metadata['attribute'])) do
+      render TurboFrameComponent.new(id: "submission_#{attr_key}_NEW_RECORD") do
+        if agent
+          render partial: 'agents/agent_show', locals: { agent: agent, name_prefix: '', edit_on_modal: false,
+                                                         parent_id: "submission_",
+                                                         frame_id: "submission[#{attr_key}]",
+                                                         deletable: true}
+        else
+          render AgentSearchInputComponent.new(id: "" , agent_type: agent_type(attr.metadata),
+                                               parent_id: "submission_#{attr_key}",
+                                               edit_on_modal: false,
+                                               deletable: true)
+        end
+      end
+    end
+  end
+
+
+  def generate_list_agent_input(attr)
     render Input::InputFieldComponent.new(name: '', error_message: attribute_error(attr.metadata['attribute'])) do
       render NestedAgentSearchInputComponent.new(label: attr_header_label(attr),
                                                  agents: attr.values,
@@ -296,13 +324,37 @@ module SubmissionInputsHelper
     label = attr_header_label(attr)
     values = attr.values
     name = attr.name
+
+    is_relation = ontology_relation?(attr.attr_key)
     if attr.type?('list')
-      generate_list_field_input(attr, name, label, values) do |value, row_name, id|
-        url_input(label: '', name: row_name, value: value)
+      if is_relation
+        generate_ontology_select_input(name, label, values, true)
+      else
+       generate_list_field_input(attr, name, label, values) do |value, row_name, id|
+          url_input(label: '', name: row_name, value: value)
+        end
       end
     else
-      url_input(label: label, name: name, value: values)
+      if is_relation
+        generate_ontology_select_input(name, label, values, false)
+      else
+        url_input(label: label, name: name, value: values)
+      end
     end
+  end
+
+  def generate_ontology_select_input(name, label , selected, multiple)
+    unless @ontology_acronyms
+      @ontology_acronyms = LinkedData::Client::Models::Ontology.all(include: 'acronym', display_links: false, display_context: false, include_views: true)
+                                                               .map{|x| [x.acronym, x.id.to_s]}
+      @ontology_acronyms << ['', '']
+    end
+
+    input = ''
+
+    input = hidden_field_tag("#{name}[]")  if multiple
+
+    input + select_input(id: name, name: name, label: label, values: @ontology_acronyms, selected: selected, multiple: multiple)
   end
 
   def generate_list_text_input(attr)
