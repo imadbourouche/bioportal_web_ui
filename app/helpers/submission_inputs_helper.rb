@@ -3,17 +3,20 @@ module SubmissionInputsHelper
   class SubmissionMetadataInput
     include MetadataHelper
 
-    def initialize(attribute_key:, attr_metadata: , submission: nil, label: nil)
+    def initialize(attribute_key:, attr_metadata:, submission: nil, label: nil)
       @attribute_key = attribute_key
       @attr_metadata = attr_metadata
       @submission = submission
       @label = label
     end
 
-    def attr_key
+    def attr
       @attribute_key
     end
-    def attr
+
+    alias :attr_key :attr
+
+    def attr_key
       @attribute_key
     end
 
@@ -53,19 +56,25 @@ module SubmissionInputsHelper
     attr = SubmissionMetadataInput.new(attribute_key: attr_key, submission: @submission, label: label,
                                        attr_metadata: attr_metadata(attr_key))
 
+
     if attr.type?('Agent')
       if attr.type?('list')
         generate_list_agent_input(attr)
       else
-        # generate_agent_input(attr)
+        generate_agent_input(attr)
       end
     elsif attr.type?('integer')
       generate_integer_input(attr)
     elsif attr.type?('date_time')
-      generate_date_input(attr, max_date: max_date)
+      if attr.type?('list')
+        generate_list_date_input(attr, max_date: max_date)
+      else
+        generate_date_input(attr, max_date: max_date)
+      end
     elsif attr.type?('textarea')
       generate_textarea_input(attr)
     elsif enforce_values?(attr)
+
       if attr.type?('list')
         generate_select_input(attr, multiple: true)
       elsif attr.type?('boolean')
@@ -98,7 +107,6 @@ module SubmissionInputsHelper
 
   end
 
-
   def ontology_name_input(ontology = @ontology)
     text_input(name: 'ontology[name]', value: ontology.name)
   end
@@ -130,8 +138,22 @@ module SubmissionInputsHelper
     end
   end
 
+  def has_ontology_language_input(submission = @submission)
+    render Layout::RevealComponent.new(init_show: submission.hasOntologyLanguage&.eql?('SKOS'), show_condition: 'SKOS') do |c|
+      c.button do
+        attribute_input("hasOntologyLanguage")
+      end
+      content_tag(:div, class: "upload-ontology-desc") do
+        content_tag(:div) do
+          "SKOS vocabularies submitted to BioPortal must contain a minimum of one concept scheme and top concept assertion. Please
+          refer to the NCBO wiki for a more #{link_to(ExternalLinkTextComponent.new(text: 'detailed explanation').call, "#seethewiki")} with examples.".html_safe
+        end
+      end
+    end
+  end
+
   def ontology_groups_input(ontology = @ontology, groups = @groups)
-    groups ||=  LinkedData::Client::Models::Group.all(display_links: false, display_context: false)
+    groups ||= LinkedData::Client::Models::Group.all(display_links: false, display_context: false)
 
     render Input::InputFieldComponent.new(name: '', label: 'Groups') do
       content_tag(:div, class: 'upload-ontology-chips-container') do
@@ -151,7 +173,7 @@ module SubmissionInputsHelper
 
     render(Layout::RevealComponent.new(init_show: ontology.viewingRestriction&.eql?('private'), show_condition: 'private')) do |c|
       c.button do
-        select_input(label: "Visibility", name: "ontology[viewingRestriction]", values: %w[public private], selected: ontology.viewingRestriction )
+        select_input(label: "Visibility", name: "ontology[viewingRestriction]", values: %w[public private], selected: ontology.viewingRestriction)
       end
       content_tag(:div, class: 'upload-ontology-input-field-container') do
         select_input(label: "Add or remove accounts that are allowed to see this ontology in #{portal_name}.", name: "ontology[acl]", values: @user_select_list, selected: ontology.acl, multiple: true)
@@ -168,7 +190,7 @@ module SubmissionInputsHelper
       end
 
       content_tag(:div) do
-        render partial: "shared/ontology_picker_single", locals: {placeholder: "", field_name: "viewOf", selected: ontology.viewOf}
+        render partial: "shared/ontology_picker_single", locals: { placeholder: "", field_name: "viewOf", selected: ontology.viewOf }
       end
     end
   end
@@ -241,23 +263,25 @@ module SubmissionInputsHelper
   def generate_agent_input(attr)
     attr_key = attr.metadata['attribute'].to_s
     agent = attr.values
+    random_id = rand(100_000..999_999).to_s
     render Input::InputFieldComponent.new(name: '', label: attr_header_label(attr), error_message: attribute_error(attr.metadata['attribute'])) do
-      render TurboFrameComponent.new(id: "submission_#{attr_key}_NEW_RECORD") do
+      render TurboFrameComponent.new(id: "submission_#{attr_key}_#{random_id}") do
         if agent
-          render partial: 'agents/agent_show', locals: { agent: agent, name_prefix: '', edit_on_modal: false,
-                                                         parent_id: "submission_",
-                                                         frame_id: "submission[#{attr_key}]",
-                                                         deletable: true}
+          render partial: 'agents/agent_show', locals: { agent_id: random_id,
+                                                         agent: agent,
+                                                         name_prefix: attr.name,
+                                                         parent_id: "submission_#{attr_key}",
+                                                         edit_on_modal: false, deletable: true }
         else
-          render AgentSearchInputComponent.new(id: "" , agent_type: agent_type(attr.metadata),
+          render AgentSearchInputComponent.new(id: random_id, agent_type: agent_type(attr.metadata),
                                                parent_id: "submission_#{attr_key}",
                                                edit_on_modal: false,
+                                               name_prefix: attr.name,
                                                deletable: true)
         end
       end
     end
   end
-
 
   def generate_list_agent_input(attr)
     render Input::InputFieldComponent.new(name: '', error_message: attribute_error(attr.metadata['attribute'])) do
@@ -266,6 +290,15 @@ module SubmissionInputsHelper
                                                  agent_type: agent_type(attr.metadata),
                                                  name_prefix: attr.name,
                                                  parent_id: attr.attr)
+    end
+
+  end
+
+  def generate_list_date_input(attr, max_date: nil)
+    generate_list_field_input(attr, attr.name, attr_header_label(attr), attr.values) do |value, row_name, id|
+      date_input(label: '', name: row_name,
+                 value: value,
+                 max_date: max_date)
     end
 
   end
@@ -286,13 +319,14 @@ module SubmissionInputsHelper
     label = attr_header_label(attr)
     metadata_values, select_values = selected_values(attr, enforced_values(attr))
 
-    unless multiple
+    if !multiple && !attr.required?
       select_values << ['', '']
-      metadata_values = '' if metadata_values.nil? && !attr.required?
+      metadata_values = '' if metadata_values.nil?
     end
 
     select_input(name: name, label: label, values: select_values,
-                 selected: metadata_values, multiple: multiple)
+                 selected: metadata_values, multiple: multiple, required: attr.required?,
+                 open_to_add: open_to_add_metadata?(attr.attr_key))
   end
 
   def generate_list_field_input(attr, name, label, values, &block)
@@ -302,7 +336,6 @@ module SubmissionInputsHelper
           label
         end
         c.template do
-          binding.pry if @ontology.acronym.nil?
           block.call('', "#{name}[NEW_RECORD]", attr.attr.to_s + '_' + @ontology.acronym)
         end
 
@@ -330,7 +363,7 @@ module SubmissionInputsHelper
       if is_relation
         generate_ontology_select_input(name, label, values, true)
       else
-       generate_list_field_input(attr, name, label, values) do |value, row_name, id|
+        generate_list_field_input(attr, name, label, values) do |value, row_name, id|
           url_input(label: '', name: row_name, value: value)
         end
       end
@@ -343,18 +376,21 @@ module SubmissionInputsHelper
     end
   end
 
-  def generate_ontology_select_input(name, label , selected, multiple)
+  def generate_ontology_select_input(name, label, selected, multiple)
     unless @ontology_acronyms
-      @ontology_acronyms = LinkedData::Client::Models::Ontology.all(include: 'acronym', display_links: false, display_context: false, include_views: true)
-                                                               .map{|x| [x.acronym, x.id.to_s]}
+      @ontology_acronyms = LinkedData::Client::Models::Ontology.all(include: 'acronym,name', display_links: false, display_context: false, include_views: true)
+                                                               .map { |x| ["#{x.name} (#{x.acronym})", x.id.to_s] }
       @ontology_acronyms << ['', '']
     end
 
     input = ''
 
-    input = hidden_field_tag("#{name}[]")  if multiple
+    input = hidden_field_tag("#{name}[]") if multiple
 
-    input + select_input(id: name, name: name, label: label, values: @ontology_acronyms, selected: selected, multiple: multiple)
+    input + select_input(id: name, name: name,
+                         label: label, values: @ontology_acronyms + Array(selected),
+                         selected: selected, multiple: multiple,
+                         open_to_add: true)
   end
 
   def generate_list_text_input(attr)
@@ -371,7 +407,9 @@ module SubmissionInputsHelper
     value = value.to_s unless value.nil?
     name = attr.name
     content_tag(:div, class: 'd-flex') do
-      switch_input(id: name, name: name, label: attr_header_label(attr), checked: value.eql?('true'), value: value, boolean_switch: true, style: 'font-size: 14px;')
+      switch_input(id: name, name: name, label: attr_header_label(attr), checked: value.eql?('true'), value: value,
+                   boolean_switch: true,
+                   style: 'font-size: 14px;')
     end
   end
 
@@ -429,7 +467,7 @@ module SubmissionInputsHelper
       end
 
       unless attr['enforce'].nil? || attr['enforce'].empty?
-        help_text += render(FieldContainerComponent.new(label: 'Validators', value: attr['enforce'].map do  |x| 
+        help_text += render(FieldContainerComponent.new(label: 'Validators', value: attr['enforce'].map do |x|
           content_tag(:span, x.humanize, class: 'badge badge-primary mx-1')
         end.join.html_safe))
       end

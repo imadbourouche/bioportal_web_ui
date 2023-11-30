@@ -41,28 +41,29 @@ module AgentHelper
 
   def link_to_agent_edit_modal(agent, parent_id = nil)
 
-    link_to_modal(nil, edit_agent_path(agent_id(agent), parent_id: parent_id, show_affiliations: parent_id.nil? || parent_id.empty?), class: 'btn btn-sm btn-light', data: { show_modal_title_value: "Edit agent #{agent.id}" }) do
+    link_to_modal(nil, edit_agent_path(agent_id(agent), parent_id: parent_id, show_affiliations: parent_id.nil? || parent_id.empty?), class: 'btn btn-sm btn-light', data: { show_modal_title_value: "Edit agent #{agent.name}" }) do
       content_tag(:i, '', class: 'far fa-edit')
     end
   end
 
-  def link_to_agent_edit(agent, parent_id = nil)
-    link_to(edit_agent_path(agent_id(agent), parent_id: parent_id, show_affiliations: parent_id.nil? || parent_id.empty?), class: 'btn btn-sm btn-light') do
+  def link_to_agent_edit(agent, parent_id, name_prefix, deletable: false, show_affiliations: true)
+    link_to(edit_agent_path(agent_id(agent), name_prefix: name_prefix, deletable: deletable, parent_id: parent_id, show_affiliations: show_affiliations), class: 'btn btn-sm btn-light') do
       content_tag(:i, '', class: 'far fa-edit')
     end
   end
 
 
-  def link_to_search_agent(parent_id , agent_type, deletable)
-    link_to("/agents/show_search?parent_id=#{parent_id}&agent_type=#{agent_type}&deletable=#{deletable}", class: 'btn btn-sm btn-light') do
+  def link_to_search_agent(id, parent_id , name_prefix, agent_type, deletable)
+    link_to("/agents/show_search?id=#{id}&parent_id=#{parent_id}&agent_type=#{agent_type}&deletable=#{deletable}&name_prefix=#{name_prefix}", class: 'btn btn-sm btn-light') do
       inline_svg_tag "x.svg", width: "25", height: "25"
     end
   end
 
-  def agent_search_input(id, agent_type, deletable: false)
-    render TurboFrameComponent.new(id: agent_id_frame_id(id, '')) do
+  def agent_search_input(id, agent_type, parent_id: , name_prefix:, deletable: false)
+    render TurboFrameComponent.new(id: agent_id_frame_id(id, parent_id)) do
       render AgentSearchInputComponent.new(id: id, agent_type: agent_type,
-                                           parent_id: '', deletable: deletable,
+                                           name_prefix: name_prefix,
+                                           parent_id: parent_id, deletable: deletable,
                                            edit_on_modal: false)
     end
   end
@@ -99,7 +100,7 @@ module AgentHelper
 
     out = agent.name.to_s
     identifiers = display_identifiers(agent.identifiers, link: link)
-    out = "#{out} (#{identifiers})" unless identifiers.empty?
+    out = "#{out} ( #{identifiers} )" unless identifiers.empty?
     affiliations = Array(agent.affiliations).map { |a| display_agent(a, link: link) }.join(', ')
     out = "#{out} (affiliations: #{affiliations})" unless affiliations.empty?
     out

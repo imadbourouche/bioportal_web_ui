@@ -55,19 +55,7 @@
           = horizontal_list_container(Array(@submission_latest&.naturalLanguage)) do |v|
             = render LanguageFieldComponent.new(value: v)
 
-    - unless Array(@submission_latest&.metadataVoc).empty?
-      - l.row do
-        = render FieldContainerComponent.new(label: 'Used Metadata vocabularies') do
-          = metadata_vocabulary_display(@submission_latest&.metadataVoc)
 
-
-    - if  @submission_latest&.pullLocation
-      - l.row do
-        = admin_block(class_css: '') do
-          = render FieldContainerComponent.new(label: 'Pull location') do
-            = horizontal_list_container([@submission_latest&.pullLocation]) do |v|
-              %span.admin-background
-                = render LinkFieldComponent.new(value: v)
     - unless  Array(@submission_latest&.keywords).empty? && Array(@submission_latest&.keyClasses).empty?
       - l.row do
         = render FieldContainerComponent.new(label: 'Keywords and classes') do
@@ -84,11 +72,14 @@
         = render FieldContainerComponent.new(label: 'Categories and subjects') do
           = horizontal_list_container(domains.uniq) do |v|
             = render ChipButtonComponent.new(text: show_category_name(v), type: "static")
-    - unless Array(@ontology.group).empty?
+
+    - if  @submission_latest&.pullLocation
       - l.row do
-        = render FieldContainerComponent.new(label: 'Groups') do
-          = horizontal_list_container(@ontology.group) do |v|
-            = render ChipButtonComponent.new(text: show_group_name(v), type: "static")
+        = admin_block(class_css: '') do
+          = render FieldContainerComponent.new(label: 'Pull location') do
+            = horizontal_list_container([@submission_latest&.pullLocation]) do |v|
+              %span.admin-background
+                = render LinkFieldComponent.new(value: v)
   %hr.w-100.my-3
   .icons_container
     = ontology_icon_links(@ontology_icon_links, @submission_latest)
