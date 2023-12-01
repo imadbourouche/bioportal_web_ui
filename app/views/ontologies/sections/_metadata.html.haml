@@ -1,4 +1,5 @@
 = turbo_frame_tag 'summary', target:"_top" do
+  = not_ready_submission_alert(submission: @submission_latest)
   .summary-page-center
     .summary-page-first-row
       = render partial: 'ontologies/sections/metadata/ontology_description_section'
@@ -13,8 +14,9 @@
           = render LinkFieldComponent.new(value: v)
 
       = properties_dropdown('dates','Dates','', @dates_properties) do |values|
-        = horizontal_list_container(values) do |v|
-          = render DateTimeFieldComponent.new(value: v)
+        - Array(values).sort.map do |v|
+          %div
+            = render DateTimeFieldComponent.new(value: v)
 
       = properties_dropdown('person_and_organization','Persons and organizations','', @agents_properties) do |values|
         = horizontal_list_container(values) do |v|
@@ -28,20 +30,23 @@
 
       = properties_dropdown('projects_section','Projects and usage information','Details pertaining to the utilization of the ontology.', nil) do |c|
         - c.row do
-          = render FieldContainerComponent.new do |f|
-            - f.label do
-              Projects using #{@ontology.acronym}
-              = new_element_link('Create new project', new_project_path)
-
-            - if @projects.empty?
-              = empty_state_message("No projects using #{@ontology.acronym}")
-            - else
-              = horizontal_list_container(@projects) do |project|
-                = render ChipButtonComponent.new(url: project_path(project.acronym), text: project.name, type: "clickable")
+          = projects_field(@projects)
         - properties_list_component(c, @projects_properties)
 
       = properties_dropdown('methodology','Methodology and provenance', 'Metadata properties primarily encompass the design, methods, and actions to create the ontology. This includes elements such as the tools and software employed by the creator of the ontology during its configuration.', @methodology_properties)
+      = properties_dropdown('community','Community', 'Metadata properties primarily encompass the design, methods, and actions to create the ontology. This includes elements such as the tools and software employed by the creator of the ontology during its configuration.', nil ) do |c|
+        - properties_list_component(c, @community_properties)
+        - unless Array(@ontology.group).empty?
+          - c.row do
+            = render FieldContainerComponent.new(label: 'Groups') do
+              = horizontal_list_container(@ontology.group) do |v|
+                = render ChipButtonComponent.new(text: show_group_name(v), type: "static")
 
+      = properties_dropdown('content','Content', 'Metadata properties primarily encompass the design, methods, and actions to create the ontology. This includes elements such as the tools and software employed by the creator of the ontology during its configuration.', nil) do |c|
+        - properties_list_component(c, @content_properties.reject{|k, v| %w[keyClasses metadataVoc].include?(k.to_s)})
+        - c.row do
+          = render FieldContainerComponent.new(label: attr_label('metadataVoc', attr_metadata: attr_metadata("metadataVoc"), show_tooltip: false)) do
+            = Array(@content_properties['metadataVoc']).map{|x| metadata_vocabulary_display(x)}.join.html_safe
       = render Layout::CardComponent.new do |c|
         - c.header do  |h|
           - h.text do
@@ -67,3 +72,6 @@
       - unless @submission_latest.nil?
         = javascript_include_tag("jsonld")
         = metadata_formats_buttons
+
+      = admin_block do
+        = properties_dropdown('configuration','Configuration metadata', 'Regroup all the metadata properties used by the portal to configure the behavior of the resource', @config_properties)

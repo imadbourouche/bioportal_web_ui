@@ -36,6 +36,23 @@ module MetadataHelper
     input_type?(attr_metadata(attr_label), 'isOntology')
   end
 
+
+  def metadata_categories
+    submission_metadata.group_by{|x| x['category']}.transform_values{|x| x.map{|attr| attr['attribute']} }
+  end
+  def ontology_relation?(attr_label)
+    relations_attr = metadata_categories['relations']
+    !attr_label.to_s.eql?('hasPriorVersion') && relations_attr.include?(attr_label.to_s)
+  end
+
+  def open_to_add_metadata?(attr_key)
+    attrs = [:naturalLanguage, :hasLicense, :usedOntologyEngineeringTool,
+             :accrualPeriodicity, :includedInDataCatalog, :metadataVoc]
+    attrs = attrs +  metadata_categories['relations'].map(&:to_sym).reject{|x| x.eql?(:hasPriorVersion)}
+    attrs = attrs +  metadata_categories['object description properties'].map(&:to_sym)
+    attrs.include?(attr_key.to_sym)
+  end
+
   def attr_uri?(attr_label)
     input_type?(attr_metadata(attr_label), "uri")
   end

@@ -5,8 +5,7 @@
         .browse-ontology-title-bar
           %a.browse-ontology-title{:href => "/ontologies/#{ontology[:acronym]}", data: {'turbo': 'false'}}
             = ontology[:name]+" ("+ontology[:acronym]+")"
-            - if ontology[:private]
-              %i.fas.fa-key{title:"Private Ontology"}
+            = private_ontology_icon(ontology[:private])
             - if session[:user]&.admin?
               - ontology_status = status_string(ontology)
               = render Display::InfoTooltipComponent.new(text: ontology_status, icon: submission_status_icons(ontology_status))
@@ -54,23 +53,22 @@
         - date = render DateTimeFieldComponent.new(value: ontology[:released])
         %span{data:{controller:'tooltip'}, title: "Release date #{date}"}
           = render ChipButtonComponent.new(type: "clickable") do
-            = DateTime.parse(date).year
+            = DateTime.parse(date).year rescue date
 
       - if ontology[:format]
         %span.mx-1
           = render ChipButtonComponent.new(type: "clickable") do
             = ontology[:format]
-      - if ontology[:deprecated]
+      - if ontology_retired?(ontology)
         %span.mx-1
-          = render ChipButtonComponent.new(type: "clickable", text: "Retired")
+          = ontology_retired_badge(ontology)
       - if ontology[:viewOfOnt]
         %span.mx-1{data:{controller:'tooltip'}, title: "View of the ontology #{ontology[:viewOfOnt].split('/').last}"}
           = render ChipButtonComponent.new(type: "clickable", text: "View")
 
       - if session[:user]&.admin?
         %div.mx-1{title: content_tag(:div, debug(ontology), style: 'height: 300px; overflow: scroll'), data:{controller: 'tooltip', 'tooltip-interactive-value': 'true'}}
-          %span.admin-background
-            = render ChipButtonComponent.new(type: "clickable", text: "Debug")
+          = render ChipButtonComponent.new(type: "clickable", text: "Debug" , class: 'admin-background')
 - else
   .browse-ontology-container
     .browse-sket

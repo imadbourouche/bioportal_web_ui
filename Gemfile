@@ -128,10 +128,13 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem 'capybara'
   gem 'selenium-webdriver'
-  gem 'webdrivers'
+  gem 'simplecov', require: false
+  gem 'simplecov-cobertura' # for codecov.io
+  #gem 'webdrivers'
 end
 
 
 gem "net-ftp", "~> 0.2.0", require: false
-gem "net-http"
+gem "net-http", "~> 0.3.2"
+
 

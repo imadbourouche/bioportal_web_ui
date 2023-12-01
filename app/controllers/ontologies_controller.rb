@@ -244,11 +244,9 @@ class OntologiesController < ApplicationController
 
     # Handle the case where an ontology is converted to summary only.
     # See: https://github.com/ncbo/bioportal_web_ui/issues/133.
-    if @ontology.summaryOnly && params[:p].present?
-      pages = KNOWN_PAGES - ['summary', 'notes']
-      if pages.include?(params[:p])
+    data_pages = KNOWN_PAGES - %w[summary notes]
+    if @ontology.summaryOnly && params[:p].present? && data_pages.include?(params[:p].to_s)
         redirect_to(ontology_path(params[:ontology]), status: :temporary_redirect) and return
-      end
     end
 
     #@ob_instructions = helpers.ontolobridge_instructions_template(@ontology)
@@ -256,6 +254,9 @@ class OntologiesController < ApplicationController
     # Get the latest submission (not necessarily the latest 'ready' submission)
     @submission_latest = @ontology.explore.latest_submission(include: 'all') rescue @ontology.explore.latest_submission(include: '')
 
+    if !helpers.submission_ready?(@submission_latest) && params[:p].present? && data_pages.include?(params[:p].to_s)
+      redirect_to(ontology_path(params[:ontology]), status: :temporary_redirect) and return
+    end
     # Is the ontology downloadable?
     @ont_restricted = ontology_restricted?(@ontology.acronym)
 
@@ -318,13 +319,24 @@ class OntologiesController < ApplicationController
       ["#{helpers.attr_label(attr, attr_metadata: helpers.attr_metadata(attr), show_tooltip: false)}(#{relation})",
        relation]
     end
+    @config_properties = properties_hash_values(category_attributes["object description properties"])
     @methodology_properties = properties_hash_values(category_attributes["methodology"])
     @agents_properties = properties_hash_values(category_attributes["persons and organizations"])
     @dates_properties = properties_hash_values(category_attributes["dates"], custom_labels: {released: "Initially created On"})
     @links_properties = properties_hash_values(category_attributes["links"])
+    @content_properties = properties_hash_values(category_attributes["content"])
+    @community_properties = properties_hash_values(category_attributes["community"] + [:notes])
     @identifiers = properties_hash_values([:URI, :versionIRI, :identifier])
     @projects_properties = properties_hash_values(category_attributes["usage"])
-    @ontology_icon_links = [%w[summary/download dataDump], %w[summary/homepage homepage], %w[summary/documentation documentation], %w[icons/github repository], %w[summary/sparql endpoint]]
+    @ontology_icon_links = [%w[summary/download dataDump],
+                            %w[summary/homepage homepage],
+                            %w[summary/documentation documentation],
+                            %w[icons/github repository],
+                            %w[summary/sparql endpoint],
+                            %w[icons/publication publication]]
+    @ontology_icon_links.each do |icon|
+      icon << helpers.attr_label(icon[1], attr_metadata: helpers.attr_metadata(icon[1]), show_tooltip: false)
+    end
     if request.xhr?
       render partial: 'ontologies/sections/metadata', layout: false
     else
@@ -361,7 +373,7 @@ class OntologiesController < ApplicationController
 
     @metadata = submission_metadata
     @ontology = LinkedData::Client::Models::Ontology.find_by_acronym(params[:id]).first
-    @licenses= ["hasLicense","morePermissions","copyrightHolder"]
+    @licenses= %w[hasLicense morePermissions copyrightHolder useGuidelines]
     @submission_latest = @ontology.explore.latest_submission(include: @licenses.join(","))
     render partial: 'ontologies/sections/licenses'
   end
@@ -373,6 +385,12 @@ class OntologiesController < ApplicationController
   end
 
  
+
+  def metrics
+    @ontology = LinkedData::Client::Models::Ontology.find_by_acronym(params[:ontology_id]).first
+    @metrics = @ontology.explore.metrics(display_context: false, display_links: false)
+    render partial: 'ontologies/sections/metrics'
+  end
 
   def metrics_evolution
     @ontology = LinkedData::Client::Models::Ontology.find_by_acronym(params[:ontology_id]).first

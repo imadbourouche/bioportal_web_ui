@@ -225,22 +225,32 @@ module ApplicationHelper
     language = request_lang
     li_id = child.id.eql?('bp_fake_root') ? 'bp_fake_root' : short_uuid
     open = child.expanded? ? "class='open'" : ''
-    icons = child.relation_icon(node)
+    #icons = child.relation_icon(node) removed because slow
     muted_style = skos && Array(child.isInActiveScheme).empty? ? 'text-muted' : nil
-    muted_title = muted_style  && !child.obsolete? ? "title='is not in a scheme'" : nil
-    href = ontology_acronym.blank? ? '#' : "/ontologies/#{child.explore.ontology.acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
+    muted_title = muted_style && !child.obsolete? ? "title='is not in a scheme'" : nil
+    href = ontology_acronym.blank? ? '#' : "/ontologies/#{ontology_acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
+
+    if child.prefLabel.nil?
+      pref_label_html = child.id.split('/').last
+    else
+      pref_label_lang, pref_label_html = select_language_label(child.prefLabel)
+      pref_label_lang = pref_label_lang.to_s.upcase
+      tooltip = pref_label_lang.eql?("@NONE") ? "" : "data-controller='tooltip' data-tooltip-position-value='right' title='#{pref_label_lang}'";
+    end
+
     link = <<-EOS
         <a id='#{child.id}' data-conceptid='#{child.id}'
            data-turbo=true data-turbo-frame='concept_show' href='#{href}' 
            data-collections-value='#{child.memberOf || []}'
            data-active-collections-value='#{child.isInActiveCollection || []}'
            data-skos-collection-colors-target='collection'
-            class='#{muted_style} #{active_style}' #{muted_title}>
-            #{child.prefLabel ? child.prefLabel({ use_html: true }) : child.id}
+           class='#{muted_style} #{active_style}' #{muted_title}'
+           #{tooltip}
+          >
+            #{ pref_label_html }
         </a>
     EOS
-
-    "<li #{open} id='#{li_id}'>#{link} #{icons}"
+    "<li #{open} id='#{li_id}'>#{link}"
   end
 
 
@@ -305,13 +315,6 @@ module ApplicationHelper
     end
   end
 
-  def anonymous_user
-    #
-    # TODO: Fix and failures from removing 'DataAccess' call here.
-    #
-    #user = DataAccess.getUser($ANONYMOUS_USER)
-    user ||= User.new({"id" => 0})
-  end
 
   def render_advanced_picker(custom_ontologies = nil, selected_ontologies = [], align_to_dom_id = nil)
     selected_ontologies ||= []
@@ -474,6 +477,15 @@ module ApplicationHelper
     count = count_subscriptions(ontology_id)
     render OntologySubscribeButtonComponent.new(ontology_id: ontology_id, subscribed: subscribed, user_id: user_id, count: count, link: link)
   end
+
+  def admin_block(ontology: @ontology, user: session[:user], class_css: "admin-border", &block)
+    if ontology.admin?(user)
+      content_tag(:div, class: class_css) do
+        capture(&block) if block_given?
+      end
+    end
+  end
+
 
   def subscribed_to_ontology?(ontology_acronym, user)
     user.bring(:subscription) if user.subscription.nil?

@@ -1,10 +1,5 @@
 x-app: &default-app
-  image: ontoportal_web_ui
-  build:
-    context: .
-    args:
-      RUBY_VERSION: '2.7.8'
-      RAILS_ENV: 'development'
+  image: agroportal/ontoportal_web_ui:test
   env_file:
     - ".env"
   tty: true
@@ -30,6 +25,10 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 3  
 
   cache:
     image: memcached:latest
@@ -42,21 +41,16 @@ services:
   node:
     <<: *default-app
     command: "yarn build --watch"
-    tty: true
-    volumes:
-      - .:/app
-      - bundle:/usr/local/bundle
-      - node:/node_modules
-      - rails_cache:/app/tmp/cache
-      - assets:/app/public/assets
-      - /var/run/docker.sock:/var/run/docker.sock
 
   rails:
     <<: *default-app
     depends_on:
-      - db
-      - cache
-      - node
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      node:
+        condition: service_started
     links:
       - db
       - cache
@@ -71,12 +65,18 @@ services:
     depends_on:
       - db
       - cache
+      - chrome-server
     network_mode: 'host'
     environment:
       BUNDLE_WITHOUT: ''
       DB_HOST: 127.0.0.1
       CACHE_HOST: 127.0.0.1
-
+  chrome-server:
+    image: selenium/standalone-chrome:112.0-chromedriver-112.0-grid-4.9.0-20230421
+    shm_size: 2g
+    ports:
+      - "4444:4444"
+      - "7900:7900"
 
 volumes:
   mysql-data:
