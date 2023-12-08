@@ -22,32 +22,12 @@
     - l.row do
       %div.creation_text
         - if @submission_latest&.released
-          Initial release occurred on
+          Initial created on
           %span.date_creation_text= l(Date.parse(@submission_latest.released), format: :monthfull_day_year) + '.'
         - if @submission_latest&.contact
-          For additional information, reach out
-          %span.date_creation_text
-            #{display_contact(@submission_latest.contact)}.
-
-        - alt_labels = (Array(@submission_latest&.alternative) + Array(@submission_latest&.hiddenLabel))
-        - unless alt_labels.empty?
-          %div.creation_text
-            Alternatively it can  also be named
-            %span.date_creation_text
-              = alt_labels.length > 1 ? "#{alt_labels[0..-2].join(', ')} or #{alt_labels.last}." : "#{alt_labels.first}."
-      - unless @submission_latest.nil? || @submission_latest.hasLicense.nil?
-        %div.creation_text
+          For additional information, contact
           %span
-            - code = ontology_import_code
-            #{code && "Import #{code} in your resource to start using it.".html_safe } This resource is under
-          %span.date_creation_text
-            #{attribute_enforced_values('hasLicense')[@submission_latest.hasLicense] || @submission_latest.hasLicense}
-          %span
-            license,
-          = link_to_modal("see access details", "/ajax/submission/show_licenses/#{@ontology.acronym}",data: { show_modal_title_value: "Additionnal license a access rights information", show_modal_size_value: 'modal-xl' })
-          %span
-            for more information.
-
+            #{display_contact(@submission_latest.contact).html_safe}.
 
     - unless Array(@submission_latest&.naturalLanguage).empty?
       - l.row do

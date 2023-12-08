@@ -431,6 +431,21 @@ module ApplicationHelper
     output = "<span class='more_less_container'><span class='truncated_more'>#{truncate(text, :length => length, :omission => trailing_text)}" + more + "</span>"
   end
 
+  def chips_component(id: , name: , label: , value: , checked: false , tooltip: nil, &block)
+    content_tag(:div, data: { controller: 'tooltip' }, title: tooltip) do
+      check_input(id: id, name: name, value: value, label: label, checked: checked, &block)
+    end
+  end
+
+  def group_chip_component(id: nil, name: , object: , checked: , value: nil, title: nil, &block)
+    title ||= object["name"]
+    value ||= (object["value"] || object["acronym"] || object["id"])
+
+    chips_component(id: id || value, name: name, label: object["acronym"],
+                    checked: checked,
+                    value: value, tooltip: title, &block)
+  end
+  alias  :category_chip_component :group_chip_component
 
   def add_comment_button(parent_id, parent_type)
     if session[:user].nil?
@@ -712,5 +727,33 @@ module ApplicationHelper
   end
   def attribute_enforced_values(attr)
     submission_metadata.select {|x| x['@id'][attr]}.first['enforcedValues']
+  end
+
+  def prefix_properties(concept_properties)
+    modified_properties = {}
+
+    concept_properties.each do |key, value|
+      if value.is_a?(Hash) && value.key?(:key)
+        key_string = value[:key].to_s
+        next if key_string.include?('metadata')
+
+        modified_key = prefix_property_url(key_string, key)
+        modified_properties[modified_key] = value unless modified_key.nil?
+      end
+    end
+
+    modified_properties
+  end
+
+  def prefix_property_url(key_string, key = nil)
+    namespace_key, _ = RESOLVE_NAMESPACE.find { |_, value| key_string.include?(value) }
+
+    if key && namespace_key
+      "#{namespace_key}:#{key}"
+    elsif key.nil? && namespace_key
+      namespace_key
+    else # we don't try to guess the prefix
+       nil
+    end
   end
 end
