@@ -1,58 +1,55 @@
 # frozen_string_literal: false
 
 class TreeViewComponent < ViewComponent::Base
-   include ApplicationHelper
-include ActionView::Helpers::TagHelper
-    
-    def initialize( ontology, concept_schemes, language, params, root, concept)
-      @conceptid =  concept.id
-      @concept_schemes = concept_schemes
-      @language = language
-      @ontology = ontology 
-      @root = root
-      @concept = concept
-    end
+  include Turbo::FramesHelper
 
-    private
+  def initialize(id, ontology, concept_schemes, language, root, concept, auto_click: false, **html_options)
+    @id = id
+    @conceptid = concept.id
+    @concept_schemes = concept_schemes.is_a?(String) ? concept_schemes.split(',') : Array(concept_schemes)
+    @language = language
+    @ontology = ontology
+    @root = root
+    @concept = concept
+    @auto_click = auto_click
+    @html_options = html_options
+  end
 
-    def draw_tree(root, id = nil, concept_schemes = [])
-      id = root.children.first.id if id.nil?
-  
-      # TODO: handle tree view for obsolete classes, e.g. 'http://purl.obolibrary.org/obo/GO_0030400'
-      raw build_tree(root, '', id, concept_schemes: concept_schemes)
-    end
+  private
 
-    def build_tree(node, string, id, concept_schemes: [])
+  def sub_tree?
+    @root.id.eql?(@concept.id)
+  end
 
-      return string if node.children.nil? || node.children.empty?
-  
-      node.children.sort! { |a, b| (a.prefLabel || a.id).downcase <=> (b.prefLabel || b.id).downcase }
-      node.children.each do |child|
-        active_style = child.id.eql?(id) ? "active" : ''
-  
-        # This fake root will be present at the root of "flat" ontologies, we need to keep the id intact
-  
-        if child.id.eql?('bp_fake_root')
-          string << tree_link_to_concept(child: child, ontology_acronym: '',
-                                         active_style: active_style, 
-                                         node: node, concept_schemes: concept_schemes)
-        else
-          string << tree_link_to_concept(child: child, ontology_acronym: child.explore.ontology.acronym,
-                                         active_style: active_style, 
-                                         node: node,
-                                         concept_schemes: concept_schemes)
-  
-          if child.hasChildren && !child.expanded?
-            string << render(TurboFrameComponent.new(id:"#{child_id(child)}_childs"))
-          elsif child.expanded?
-            string << '<ul>'
-            build_tree(child, string, id, concept_schemes: concept_schemes)
-            string << '</ul>'
-          end
-          string << '</li>'
-        end
+  def tree_container(&block)
+    if sub_tree?
+      content_tag(:ul, capture(&block), class: 'pl-2 tree-border-left')
+    else
+      content_tag(:div, class: 'tree_wrapper hide-if-loading') do
+        content_tag(:ul, capture(&block), class: 'simpleTree root', data: { controller: 'simple-tree',
+                                                      'simple-tree': { 'auto-click-value': "#{auto_click?}" },
+                                                      action: 'clicked->history#updateURL' })
       end
-      string
     end
+  end
+
+  def auto_click?
+    @auto_click.to_s
+  end
+
+  # TDOD check where used
+  def child_id(child)
+    child.id.to_s.split('/').last
+  end
+
+  # TODO make this a component, and update its usages
+  def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil, concept_schemes: nil)
+    render TreeLinkComponent.new(child: child, ontology_acronym: ontology_acronym,
+                                 active_style: active_style,
+                                 node: node,
+                                 concept_schemes: concept_schemes, language: @language
+    )
+  end
+
 end
   
