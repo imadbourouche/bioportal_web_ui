@@ -84,8 +84,5 @@ application.register("turbo-frame", TurboFrameController)
 import TurboFrameErrorController from "./turbo_frame_error_controller"
 application.register("turbo-frame-error", TurboFrameErrorController)
 
-import ToggleController from "./toggle_controller"
-application.register("toggle", ToggleController)
-
 import SimpleTreeController from "./simple_tree_controller"
 application.register("simple-tree", SimpleTreeController)

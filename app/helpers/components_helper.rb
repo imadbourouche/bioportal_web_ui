@@ -1,4 +1,19 @@
 module ComponentsHelper
+
+  def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil, concept_schemes: nil, &block)
+    render TreeLinkComponent.new(child: child, ontology_acronym: ontology_acronym,
+                                 active_style: active_style,
+                                 node: node,
+                                 concept_schemes: concept_schemes, language: @language
+    ) do
+      capture(&block) if block_given?
+    end
+  end
+
+  def tree_close_icon
+    content_tag(:i, nil, class: "fas fa-chevron-down text-primary", data:{action:'click->simple-tree#toggleChildren'})
+  end
+
   def info_tooltip(text)
     render Display::InfoTooltipComponent.new(text: text)
   end
