@@ -6,18 +6,31 @@ require 'digest/sha1'
 require 'pry' # used in a rescue
 
 module ApplicationHelper
+  REST_URI = $REST_URL
+  API_KEY = $API_KEY
+
+  include ModalHelper, MultiLanguagesHelper
 
   RESOLVE_NAMESPACE = {:omv => "http://omv.ontoware.org/2005/05/ontology#", :skos => "http://www.w3.org/2004/02/skos/core#", :owl => "http://www.w3.org/2002/07/owl#",
                        :rdf => "http://www.w3.org/1999/02/22-rdf-syntax-ns#", :rdfs => "http://www.w3.org/2000/01/rdf-schema#", :metadata => "http://data.bioontology.org/metadata/",
                        :metadata_def => "http://data.bioontology.org/metadata/def/", :dc => "http://purl.org/dc/elements/1.1/", :xsd => "http://www.w3.org/2001/XMLSchema#",
                        :oboinowl_gen => "http://www.geneontology.org/formats/oboInOwl#", :obo_purl => "http://purl.obolibrary.org/obo/",
-                       :umls => "http://bioportal.bioontology.org/ontologies/umls/", :door => "http://kannel.open.ac.uk/ontology#", :dct => "http://purl.org/dc/terms/",
-                       :void => "http://rdfs.org/ns/void#", :foaf => "http://xmlns.com/foaf/0.1/", :vann => "http://purl.org/vocab/vann/", :adms => "http://www.w3.org/ns/adms#",
-                       :voaf => "http://purl.org/vocommons/voaf#", :dcat => "http://www.w3.org/ns/dcat#", :mod => "http://www.isibang.ac.in/ns/mod#", :prov => "http://www.w3.org/ns/prov#",
+                        :umls => "http://bioportal.bioontology.org/ontologies/umls/", :door => "http://kannel.open.ac.uk/ontology#", :dct => "http://purl.org/dc/terms/",
+                        :void => "http://rdfs.org/ns/void#", :foaf => "http://xmlns.com/foaf/0.1/", :vann => "http://purl.org/vocab/vann/", :adms => "http://www.w3.org/ns/adms#",
+                        :voaf => "http://purl.org/vocommons/voaf#", :dcat => "http://www.w3.org/ns/dcat#", :mod => "http://www.isibang.ac.in/ns/mod#", :prov => "http://www.w3.org/ns/prov#",
                        :cc => "http://creativecommons.org/ns#", :schema => "http://schema.org/", :doap => "http://usefulinc.com/ns/doap#", :bibo => "http://purl.org/ontology/bibo/",
                        :wdrs => "http://www.w3.org/2007/05/powder-s#", :cito => "http://purl.org/spar/cito/", :pav => "http://purl.org/pav/", :nkos => "http://w3id.org/nkos/nkostype#",
                        :oboInOwl => "http://www.geneontology.org/formats/oboInOwl#", :idot => "http://identifiers.org/idot/", :sd => "http://www.w3.org/ns/sparql-service-description#",
                        :cclicense => "http://creativecommons.org/licenses/"}
+
+
+  def ontologies_analytics
+    LinkedData::Client::Analytics.all.to_h.map do |key, ontology_analytics|
+      next if key.eql?(:links) || key.eql?(:context)
+
+      [key.to_s, ontology_analytics.to_h.values.map { |x| x&.values }.flatten.compact.sum]
+    end.compact.to_h
+  end
 
   def get_apikey
     unless session[:user].nil?
@@ -25,6 +38,18 @@ module ApplicationHelper
     else
       return LinkedData::Client.settings.apikey
     end
+  end
+
+  def omniauth_providers_info
+    $OMNIAUTH_PROVIDERS
+  end
+
+  def omniauth_provider_info(strategy)
+    omniauth_providers_info.select {|k,v| v[:strategy].eql?(strategy.to_sym) || k.eql?(strategy)}
+  end
+
+  def omniauth_token_provider(strategy)
+    omniauth_provider_info(strategy.to_sym).keys.first
   end
 
   def isOwner?(id)
@@ -38,6 +63,7 @@ module ApplicationHelper
       end
     end
   end
+  
 
   def encode_param(string)
     CGI.escape(string)
@@ -69,6 +95,10 @@ module ApplicationHelper
     user = LinkedData::Client::Models::User.find(user_id)
     username = user.nil? ? user_id : user.username
     username
+  end
+
+  def current_user
+    session[:user]
   end
 
   def current_user_admin?
@@ -313,19 +343,26 @@ module ApplicationHelper
     BLOCK
   end
 
-  def anonymous_user
-    #
-    # TODO: Fix and failures from removing 'DataAccess' call here.
-    #
-    #user = DataAccess.getUser($ANONYMOUS_USER)
-    user ||= User.new({"id" => 0})
+  def error_message_text
+    return @errors if @errors.is_a?(String)
+    @errors = @errors[:error] if @errors && @errors[:error]
+    "Errors in fields #{@errors.keys.join(', ')}"
   end
+
+  def error_message_alert
+    return if @errors.nil?
+
+    content_tag(:div, class: 'my-1') do
+      render Display::AlertComponent.new(message: error_message_text, type: 'danger', closable: false)
+    end
+  end
+
 
   def render_advanced_picker(custom_ontologies = nil, selected_ontologies = [], align_to_dom_id = nil)
     selected_ontologies ||= []
     init_ontology_picker(custom_ontologies, selected_ontologies)
     render :partial => "shared/ontology_picker_advanced", :locals => {
-        :custom_ontologies => custom_ontologies, :selected_ontologies => selected_ontologies, :align_to_dom_id => align_to_dom_id
+      :custom_ontologies => custom_ontologies, :selected_ontologies => selected_ontologies, :align_to_dom_id => align_to_dom_id
     }
   end
 
@@ -404,14 +441,14 @@ module ApplicationHelper
   def metadata_for_select
     get_metadata
     return @metadata_for_select
-  end 
+  end
 
   def get_metadata
     @metadata_for_select = []
     submission_metadata.each do |data|
       @metadata_for_select << data["attribute"]
     end
-  end    
+  end
 
 
   def ontologies_to_acronyms(ontologyIDs)
@@ -436,6 +473,21 @@ module ApplicationHelper
     output = "<span class='more_less_container'><span class='truncated_more'>#{truncate(text, :length => length, :omission => trailing_text)}" + more + "</span>"
   end
 
+  def chips_component(id: , name: , label: , value: , checked: false , tooltip: nil, &block)
+    content_tag(:div, data: { controller: 'tooltip' }, title: tooltip) do
+      check_input(id: id, name: name, value: value, label: label, checked: checked, &block)
+    end
+  end
+
+  def group_chip_component(id: nil, name: , object: , checked: , value: nil, title: nil, &block)
+    title ||= object["name"]
+    value ||= (object["value"] || object["acronym"] || object["id"])
+
+    chips_component(id: id || value, name: name, label: object["acronym"],
+                    checked: checked,
+                    value: value, tooltip: title, &block)
+  end
+  alias  :category_chip_component :group_chip_component
 
   def add_comment_button(parent_id, parent_type)
     if session[:user].nil?
@@ -463,18 +515,34 @@ module ApplicationHelper
                     class: "add_proposal btn btn-primary", data: { show_modal_title_value: "Add a new proposal"}
     end
   end
- 
+
   def subscribe_button(ontology_id)
+    return if ontology_id.nil?
+    ontology_acronym = ontology_id.split('/').last
+
     if session[:user].nil?
-      return link_to 'Subscribe to notes emails', "/login?redirect=#{request.url}", {style:'font-size: .9em;', class:'link_button'}
+      link = "/login?redirect=#{request.url}"
+      subscribed = false
+      user_id = nil
+    else
+      user = LinkedData::Client::Models::User.find(session[:user].id)
+      subscribed = subscribed_to_ontology?(ontology_acronym, user)
+      link = "javascript:void(0);"
+      user_id = user.id
     end
 
-    user = LinkedData::Client::Models::User.find(session[:user].id)
-    ontology_acronym = ontology_id.split('/').last
-    subscribed = subscribed_to_ontology?(ontology_acronym, user)
-
-    render OntologySubscribeButtonComponent.new(ontology_id: ontology_id, subscribed: subscribed, user_id: user.id)
+    count = count_subscriptions(ontology_id)
+    render OntologySubscribeButtonComponent.new(ontology_id: ontology_id, subscribed: subscribed, user_id: user_id, count: count, link: link)
   end
+
+  def admin_block(ontology: @ontology, user: session[:user], class_css: "admin-border", &block)
+    if ontology.admin?(user)
+      content_tag(:div, class: class_css) do
+        capture(&block) if block_given?
+      end
+    end
+  end
+
 
   def subscribed_to_ontology?(ontology_acronym, user)
     user.bring(:subscription) if user.subscription.nil?
@@ -482,7 +550,7 @@ module ApplicationHelper
     return false if user.subscription.nil? or user.subscription.empty?
     user.subscription.each do |sub|
       #sub = {ontology: ontology_acronym, notification_type: "NOTES"}
-      sub_ont_acronym = sub[:ontology].split('/').last # make sure we get the acronym, even if it's a full URI
+      sub_ont_acronym = sub[:ontology] ?  sub[:ontology].split('/').last : nil #  make sure we get the acronym, even if it's a full URI
       return true if sub_ont_acronym == ontology_acronym
     end
     return false
@@ -560,23 +628,22 @@ module ApplicationHelper
   end
 
   def label_ajax_data(cls_id, ont_acronym, ajax_uri, cls_url)
-    tag.attributes label_ajax_data_h(cls_id, ont_acronym, ajax_uri, cls_url)
+    label_ajax_data_h(cls_id, ont_acronym, ajax_uri, cls_url)
   end
 
-  def label_ajax_link(link, cls_id, ont_acronym, ajax_uri, cls_url, target = '')
-    href_cls = " href='#{link}'"
+  def label_ajax_link(link, cls_id, ont_acronym, ajax_uri, cls_url, target = nil)
     data = label_ajax_data(cls_id, ont_acronym, ajax_uri, cls_url)
-    style = 'btn btn-sm btn-light'
-    "<a data-controller='label-ajax' class='#{style}' #{data} #{href_cls} #{target}>#{cls_id}</a>"
+    options = {  'data-controller': 'label-ajax' }.merge(data)
+    options = options.merge({ target: target }) if target
+
+    render ChipButtonComponent.new(url: link, text: cls_id, type: 'clickable', **options)
   end
 
   def get_link_for_cls_ajax(cls_id, ont_acronym, target = nil)
-    target = target.nil? ? '' : " target='#{target}' "
-
     if cls_id.start_with?('http://') || cls_id.start_with?('https://')
       link = bp_class_link(cls_id, ont_acronym)
-      ajax_url = "/ajax/classes/label?language=#{request_lang}"
-      cls_url = "?p=classes&conceptid=#{CGI.escape(cls_id)}&language=#{request_lang}"
+      ajax_url = '/ajax/classes/label'
+      cls_url = "/ontologies/#{ont_acronym}?p=classes&conceptid=#{CGI.escape(cls_id)}"
       label_ajax_link(link, cls_id, ont_acronym, ajax_url , cls_url ,target)
     else
       auto_link(cls_id, :all, target: '_blank')
@@ -605,50 +672,27 @@ module ApplicationHelper
   end
 
 
-  def get_link_for_label_xl_ajax(label_xl, ont_acronym, cls_id)
+  def get_link_for_label_xl_ajax(label_xl, ont_acronym, cls_id, modal: true)
     link = label_xl
     ajax_uri = "/ajax/label_xl/label?cls_id=#{CGI.escape(cls_id)}"
     label_xl_url = "/ajax/label_xl/?id=#{CGI.escape(label_xl)}&ontology=#{ont_acronym}&cls_id=#{CGI.escape(cls_id)}"
     data = label_ajax_data_h(label_xl, ont_acronym, ajax_uri, label_xl_url)
     data[:data][:controller] = 'label-ajax'
+    if modal
+      link_to_modal(cls_id, link, {data: data[:data] , class: 'btn btn-sm btn-light'})
+    else
+      link_to(link,'', {data: data[:data], class: 'btn btn-sm btn-light', target: '_blank'})
+    end
+     
 
-    link_to_modal(cls_id, link, {data: data[:data] , class: 'btn btn-sm btn-light'})
   end
 
   ###END ruby equivalent of JS code in bp_ajax_controller.
-  def ontology_viewer_page_name(ontology_name, concept_name_title , page)
-    ontology_name + " | " +concept_name_title + " - #{page.capitalize}"
+  def ontology_viewer_page_name(ontology_name, concept_label, page)
+    ontology_name + " | "  + " #{page.capitalize}"
   end
-
-  def link_to_modal(name, options = nil, html_options = nil, &block)
-
-    new_data = {
-      controller: 'show-modal', turbo: true,
-      turbo_frame: 'application_modal_content',
-      action: 'click->show-modal#show'
-    }
-
-    html_options[:data].merge!(new_data) do |_, old, new|
-      "#{old} #{new}"
-    end
-    if name.nil?
-      link_to(options, html_options, &block)
-    else
-      link_to(name, options, html_options)
-    end
-  end
-  def submit_to_modal(name, html_options = nil, &block)
-    new_data = {
-      controller: 'show-modal', turbo: true,
-      turbo_frame: 'application_modal_content',
-      action: 'click->show-modal#show'
-    }
-
-    html_options[:data].merge!(new_data) do |_, old, new|
-      "#{old} #{new}"
-    end
-
-    submit_tag(name || "save", html_options)
+  def help_path(anchor: nil)
+    "#{Rails.configuration.settings.links[:help]}##{anchor}"
   end
 
   def uri?(url)
@@ -671,15 +715,9 @@ module ApplicationHelper
     submission = @submission || @submission_latest
     submission&.hasOntologyLanguage === 'SKOS'
   end
-  
+
   def current_page?(path)
     request.path.eql?(path)
-  end   
-
-  def request_lang
-    lang = params[:language] || params[:lang]
-    lang = 'EN' unless lang
-    lang.upcase
   end
 
   def bp_config_json
@@ -706,15 +744,52 @@ module ApplicationHelper
     config[:ncbo_slice] = @subdomain_filter[:acronym] if (@subdomain_filter[:active] && !@subdomain_filter[:acronym].empty?)
     config.to_json
   end
-
-
   def portal_name
     $SITE
-  end
-
+    end
   def navitems
-    items = [["/ontologies", "Browse"],["/mappings", "Mappings"],["/recommender", "Recommender"],["/annotator", "Annotator"], ["/landscape", "Landscape"]]
+    items = [["/ontologies", t('layout.header.browse')],
+             ["/mappings", t('layout.header.mappings')],
+             ["/recommender", t("layout.header.recommender")],
+             ["/annotator", t("layout.header.annotator")],
+             ["/landscape", t("layout.header.landscape")]]
   end
 
 
+  def beta_badge(text = 'beta', tooltip: 'This feature is experimental and may have issues')
+    return unless text
+    content_tag(:span, text, data: { controller: 'tooltip' }, title: tooltip, class: 'badge badge-pill bg-secondary text-white')
+  end
+
+  def attribute_enforced_values(attr)
+    submission_metadata.select {|x| x['@id'][attr]}.first['enforcedValues']
+  end
+
+  def prefix_properties(concept_properties)
+    modified_properties = {}
+
+    concept_properties.each do |key, value|
+      if value.is_a?(Hash) && value.key?(:key)
+        key_string = value[:key].to_s
+        next if key_string.include?('metadata')
+
+        modified_key = prefix_property_url(key_string, key)
+        modified_properties[modified_key] = value unless modified_key.nil?
+      end
+    end
+
+    modified_properties
+  end
+
+  def prefix_property_url(key_string, key = nil)
+    namespace_key, _ = RESOLVE_NAMESPACE.find { |_, value| key_string.include?(value) }
+
+    if key && namespace_key
+      "#{namespace_key}:#{key}"
+    elsif key.nil? && namespace_key
+      namespace_key
+    else # we don't try to guess the prefix
+       nil
+    end
+  end
 end

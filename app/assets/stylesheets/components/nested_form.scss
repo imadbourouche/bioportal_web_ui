@@ -1,14 +1,19 @@
 .nested-form-input-container .titles{
   display: flex;
-  font-size: 11px;
+  font-size: 14px;
   color: #666666;
   margin-bottom: 5px;
   width: 90%;
+  img {
+    width: 15px;
+    height: 15px;
+    vertical-align: text-bottom;
+  }
 }
 
 
 .nested-form-input-container  input:focus{
-  border: 1px solid #31B404 !important;
+  border: 1px solid var(--primary-color) !important;
 }
 
 .nested-form-input-container .delete{

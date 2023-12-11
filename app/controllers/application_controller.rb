@@ -20,6 +20,8 @@ class ApplicationController < ActionController::Base
   def set_locale    
     I18n.locale = cookies[:locale] || detect_locale
     cookies.permanent[:locale] = I18n.locale if cookies[:locale].nil?
+    logger.debug "* Locale set to '#{I18n.locale}'"
+    session[:locale] = I18n.locale
   end
 
   # Returns detedted locale based on the Accept-Language header of the request or the default locale if none is found.
@@ -27,7 +29,7 @@ class ApplicationController < ActionController::Base
     languages = request.headers['Accept-Language']&.split(',')
     supported_languages = I18n.available_locales
 
-    languages.each do |language|
+    Array(languages).each do |language|
       language_code = language.split(/[-;]/).first.downcase.to_sym
       return language_code if supported_languages.include?(language_code)
     end
@@ -38,7 +40,11 @@ class ApplicationController < ActionController::Base
 
   helper :all # include all helpers, all the time
   helper_method :bp_config_json, :current_license, :using_captcha?
-  rescue_from ActiveRecord::RecordNotFound, with: :not_found_record
+
+  if !Rails.env.development? && !Rails.env.test?
+    rescue_from ActiveRecord::RecordNotFound, with: :not_found_record
+  end
+
   # Pull configuration parameters for REST connection.
   REST_URI = $REST_URL
   API_KEY = $API_KEY
@@ -75,9 +81,6 @@ class ApplicationController < ActionController::Base
 
   $trial_license_initialized = false
 
-  if !$EMAIL_EXCEPTIONS.nil? && $EMAIL_EXCEPTIONS == true
-    include ExceptionNotifiable
-  end
 
   # See ActionController::RequestForgeryProtection for details
   protect_from_forgery
@@ -85,6 +88,10 @@ class ApplicationController < ActionController::Base
   before_action :set_global_thread_values, :domain_ontology_set, :authorize_miniprofiler, :clean_empty_strings_from_params_arrays, :init_trial_license
 
 
+  def show_image_modal
+    url = params[:url]
+    render turbo_stream: helpers.prepend('application_modal_content') { helpers.image_tag(url, style:'width: 100%') }
+  end
 
   def set_global_thread_values
     Thread.current[:session] = session
@@ -123,10 +130,7 @@ class ApplicationController < ActionController::Base
     Thread.current[:slice] = @subdomain_filter
   end
 
-  def anonymous_user
-    user = DataAccess.getUser($ANONYMOUS_USER)
-    user ||= User.new({"id" => 0})
-  end
+
 
   def ontology_not_found(ontology_acronym)
     not_found("Ontology #{ontology_acronym} not found")
@@ -200,6 +204,20 @@ class ApplicationController < ActionController::Base
 
     check
   end
+
+  def rest_url
+    # Split the URL into protocol and path parts
+    protocol, path = REST_URI.split("://", 2)
+
+    # Remove duplicate "//"
+    cleaned_url = REST_URI.gsub(/\/\//, '/')
+
+    # Remove the last '/' in the path part
+    cleaned_path = path.chomp('/')
+    # Reconstruct the cleaned URL
+    "#{protocol}://#{cleaned_path}"
+  end
+
 
   def check_http_file(url)
     session = Net::HTTP.new(url.host, url.port)
@@ -446,13 +464,6 @@ class ApplicationController < ActionController::Base
     helpers.get_class(params)
   end
 
-  def get_metrics_hash
-    metrics_hash = {}
-    # TODO: Metrics do not return for views on the backend, need to enable include_views param there
-    @metrics = LinkedData::Client::Models::Metrics.all(include_views: true)
-    @metrics.each {|m| metrics_hash[m.links['ontology']] = m }
-    return metrics_hash
-  end
 
   def get_ontology_submission_ready(ontology)
     # Get the latest 'ready' submission
@@ -702,7 +713,6 @@ class ApplicationController < ActionController::Base
     @metadata ||= JSON.parse(Net::HTTP.get(URI.parse("#{REST_URI}/submission_metadata?apikey=#{API_KEY}")))
   end
   helper_method :submission_metadata
-
 
   def request_lang
     helpers.request_lang

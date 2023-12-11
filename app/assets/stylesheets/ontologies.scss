@@ -1,17 +1,32 @@
 $ont-metadata-bg-color: #e2ebf0;
 $widget-table-border-color: #EFEFEF;
-$ont-show-bg-color: #e9ecef;
 
-.ontologies.show {
-  background-color: $ont-show-bg-color;
 
-  #bd {
-    background-color: $ont-show-bg-color;
+.admin-background{
+  a.chip_button_container_clickable{
+    color: var(--admin-color) !important;
   }
 }
 
+.admin-border {
+  .dropdown-container{
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+.custom-container {
+  padding: 1rem;
+  background-color: #2c3e50; /* Dark gray */
+  border-radius: 0.25rem;
+}
+/* Code block styles */
+.custom-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem; /* 14px */
+  color: #fff;
+}
 .ontologies.show .gutter {
-  background-color: rgba(0, 0, 0, 0.03);
   background-repeat: no-repeat;
   background-position: center;
 
@@ -159,10 +174,7 @@ $ont-show-bg-color: #e9ecef;
   }
 }
 
-#ontology_versions td.show_more_subs {
-  text-align: right; 
-  background-color: white;
-}
+
 
 /************************************
 /* Classes pane
@@ -176,6 +188,7 @@ $ont-show-bg-color: #e9ecef;
 #bd_content .sidebar {
   overflow-x: auto;
   white-space: nowrap;
+  min-width: 35%;
 }
 
 #search_box:focus {
@@ -272,3 +285,11 @@ $ont-show-bg-color: #e9ecef;
 }
 
 
+#select_content_language{
+  & ~ .ts-wrapper .ts-control{
+    padding: 6px 8px !important;
+    .item{
+      margin-right: 15px;
+    }
+  }
+}

@@ -19,11 +19,29 @@ module ConceptsHelper
   end
 
   def get_concept_id(params, concept, root)
+    return nil if concept.nil?
+
     if concept_id_param_exist?(params)
       concept.nil? ? '' : concept.id
     elsif !root.children.first.nil?
       root.children.first.id
     end
+  end
+
+  def sub_menu_active?(section)
+    params["sub_menu"]&.eql? section
+  end
+
+  def sub_menu_active_class(section)
+    "active show" if sub_menu_active?(section)
+  end
+
+  def default_sub_menu?
+    !sub_menu_active?('list') && !sub_menu_active?('date')
+  end
+  
+  def default_sub_menu_class
+    "active show" if default_sub_menu?
   end
 
   def concept_label(ont_id, cls_id)

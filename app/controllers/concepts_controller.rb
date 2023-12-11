@@ -47,7 +47,7 @@ class ConceptsController < ApplicationController
       display = params[:callback].eql?('load') ? {full: true} : {display: "prefLabel"}
       @concept = @ontology.explore.single_class(display, params[:id])
       concept_not_found(params[:id]) if @concept.nil?
-      @schemes = params[:concept_schemes].split(',')
+      @schemes = params[:concept_schemes]&.split(',')
       show_ajax_request # process an ajax call
     else
       # Get the latest 'ready' submission, or fallback to any latest submission
@@ -72,7 +72,7 @@ class ConceptsController < ApplicationController
       return
     end
 
-    render LabelLinkComponent.inline(cls_id, concept_label(ont_id, cls_id))
+    render LabelLinkComponent.inline(cls_id, helpers.main_language_label(concept_label(ont_id, cls_id)))
   end
 
   def show_definition
@@ -192,7 +192,7 @@ private
       gather_details
       render :partial => 'load'
     when 'children' # Children is called only for drawing the tree
-      @children = @concept.explore.children(pagesize: 750, concept_schemes: @schemes.join(','), language: request_lang, display: 'prefLabel,obsolete,hasChildren').collection || []
+      @children = @concept.explore.children(pagesize: 750, concept_schemes: Array(@schemes).join(','), language: request_lang, display: 'prefLabel,obsolete,hasChildren').collection || []
       @children.sort! { |x, y| (x.prefLabel || "").downcase <=> (y.prefLabel || "").downcase } unless @children.empty?
       if turbo
         render turbo_stream: [

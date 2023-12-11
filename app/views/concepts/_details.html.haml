@@ -1,34 +1,33 @@
 = turbo_frame_tag 'concept_details' do
   - schemes_keys = %w[hasTopConcept topConceptOf]
   - label_xl_set = %w[skos-xl#prefLabel skos-xl#altLabel skos-xl#hiddenLabel]
-  - if @concept.prefLabel.nil?
-    %div.py-3.px-2
-      = render(AlertMessageComponent.new(message: t('ontology_details.concept.no_preferred_name_for_selected_language'),  type: "warning", closeable: true))
+
 
   = render ConceptDetailsComponent.new(id:'concept-details', acronym: @ontology.acronym,
-              properties: @concept.properties,
-              top_keys: %w[description comment],
-              bottom_keys: %w[disjoint subclass is_a has_part],
-              exclude_keys: schemes_keys + label_xl_set + ['inScheme']) do |c|
+                properties: @concept.properties,
+                top_keys: %w[description comment],
+                bottom_keys: %w[disjoint subclass is_a has_part],
+                exclude_keys: schemes_keys + label_xl_set + ['inScheme', 'narrower']) do |c|
 
     - c.header(stripped: true) do |t|
       - t.add_row({th: t('ontology_details.concept.id')}, {td:@concept.id})
-      - t.add_row({th: t('ontology_details.concept.preferred_name')}, {td:@concept.prefLabel({:use_html => true}).html_safe})
+      - t.add_row({th: t('ontology_details.concept.preferred_name')}) do |h|
+        - h.td do
+          = display_in_multiple_languages(@concept.prefLabel)
 
       - unless @concept.synonym.nil? || @concept.synonym.empty?
         - t.add_row({th: t('ontology_details.concept.synonyms')}) do |h|
           - h.td do
             %div.d-flex
               %div
-              - for synonym in @concept.synonym
-                = synonym
+                = display_in_multiple_languages(@concept.synonym)
               %div.synonym-change-request
                 = add_synonym_button
                 = remove_synonym_button
 
 
       - unless @concept.definition.nil? || @concept.definition.empty?
-        - t.add_row({th: t('ontology_details.concept.definitions')}, {td:dispaly_complex_text(@concept.definition)})
+        - t.add_row({th: t('ontology_details.concept.definitions')}, {td: display_in_multiple_languages(@concept.definition)})
 
       - if @concept.obsolete?
         - t.add_row({th: t('ontology_details.concept.obsolete')}, {td: 'true'})
@@ -37,15 +36,15 @@
         - unless @concept.memberOf.nil?  || @concept.memberOf.empty?
           - t.add_row({th: t('ontology_details.concept.member_of')}) do |h|
             - h.td do
-              %div.my-1
-                - @concept.memberOf.each do |v|
+              - @concept.memberOf.each do |v|
+                %span.m-1
                   = raw get_link_for_collection_ajax(v, @ontology.acronym, '_blank')
 
         - unless @concept.inScheme.nil?  || @concept.inScheme.empty?
           - t.add_row({th: t('ontology_details.concept.in_schemes')}) do |h|
             - h.td do
-              %div.my-1
-                - @concept.inScheme.each do |v|
+              - @concept.inScheme.each do |v|
+                %span.m-1
                   = raw get_link_for_scheme_ajax(v, @ontology.acronym, '_blank')
 
         - t.add_row({th: t('ontology_details.concept.type')} , {td: @concept.type})
