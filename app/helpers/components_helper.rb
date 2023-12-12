@@ -1,12 +1,14 @@
 module ComponentsHelper
 
-  def tree_link_to_concept(child:, ontology_acronym:, active_style:, node: nil, concept_schemes: nil, &block)
-    render TreeLinkComponent.new(child: child, ontology_acronym: ontology_acronym,
-                                 active_style: active_style,
-                                 node: node,
-                                 concept_schemes: concept_schemes, language: @language
+  def tree_link(child:, selected_concept: , href: ,concept_schemes: nil, data: {}, muted: false,  target_frame: nil)
+    selected =  child.id.eql?(selected_concept.id)
+
+    render TreeLinkComponent.new(child: child, href: href,
+                                 active_style: selected && 'active',
+                                 concept_schemes: concept_schemes, muted: muted,
+                                 data: data, target_frame: target_frame
     ) do
-      capture(&block) if block_given?
+
     end
   end
 

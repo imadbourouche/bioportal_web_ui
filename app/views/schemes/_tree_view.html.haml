@@ -1,4 +1,3 @@
-
 - if no_schemes?
   %div
     = no_schemes_alert
@@ -8,13 +7,6 @@
   - if main_scheme_label.nil?
     = no_main_scheme_alert
   %div
-    %ul.simpleTree{data:{controller: 'simple-tree', action: 'clicked->history#updateURL'}}
-      %li.root
-        %ul
-          - if main_scheme_label.nil?
-            =  raw tree_link_to_schemes(schemes_labels ,main_scheme_label, selected_scheme_id)
-          - else
-            %li.open
-              = raw link_to_scheme(main_scheme_label, selected_scheme_id)
-              %ul
-                = raw tree_link_to_schemes(schemes_labels ,main_scheme_label, selected_scheme_id)
+    - root, selected_scheme = scheme_tree_root(schemes_labels, main_scheme_label, selected_scheme_id)
+    = scheme_tree_component(root, selected_scheme, auto_click: true)
+

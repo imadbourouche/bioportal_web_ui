@@ -5,7 +5,7 @@ module SchemesHelper
   end
 
   def get_scheme(ontology, scheme_uri)
-    ontology.explore.schemes({ include: 'all',  language: request_lang}, scheme_uri)
+    ontology.explore.schemes({ include: 'all', language: request_lang }, scheme_uri)
   end
 
   def get_scheme_label(scheme)
@@ -22,14 +22,14 @@ module SchemesHelper
 
     selected_label = nil
     schemes_labels = []
-    schemes.each do  |x|
+    schemes.each do |x|
       id = x['@id']
       label = select_language_label(get_scheme_label(x))
       if id.eql? main_uri
         label[1] = "#{label[1]} (main)" unless label[0].empty?
         selected_label = { 'prefLabel' => label, '@id' => id }
       else
-        schemes_labels.append( { 'prefLabel' => label, '@id' => id })
+        schemes_labels.append({ 'prefLabel' => label, '@id' => id })
       end
     end
 
@@ -45,7 +45,7 @@ module SchemesHelper
   def section_name(section)
     section = concept_label_to_show(submission: @submission_latest || @submission) if section.eql?('classes')
     section
-    #t("ontology_details.sections.#{section}" , section)
+    # t("ontology_details.sections.#{section}" , section)
   end
 
   def scheme_path(scheme_id = '', language = '')
@@ -65,6 +65,7 @@ module SchemesHelper
       'no main scheme defined in the URI attribute'
     end
   end
+
   def no_schemes_alert
     render Display::AlertComponent.new do
       "#{@ontology.acronym} does not contain schemes (skos:ConceptScheme)"
@@ -72,37 +73,71 @@ module SchemesHelper
   end
 
   def schemes_data
-    schemes_labels, main_scheme = get_schemes_labels(@schemes,@submission.URI)
-    selected_scheme = @schemes.select{ |s| params[:concept_schemes]&.split(',')&.include?(s['@id']) }
+    schemes_labels, main_scheme = get_schemes_labels(@schemes, @submission.URI)
+    selected_scheme = @schemes.select { |s| params[:concept_schemes]&.split(',')&.include?(s['@id']) }
     selected_scheme = selected_scheme.empty? ? [main_scheme] : selected_scheme
     [schemes_labels, main_scheme, selected_scheme]
   end
 
-  def tree_link_to_schemes(schemes_labels, main_scheme_label, selected_scheme_id)
-    out = ''
+  def scheme_tree_root(schemes_labels, main_scheme_label, selected_scheme_id)
+    selected_scheme = nil
+    schemes = sorted_labels(schemes_labels).map do |s|
+      next nil unless main_scheme_label.nil? || s['prefLabel'] != main_scheme_label['prefLabel']
+      scheme = OpenStruct.new(s)
+      scheme.prefLabel = Array(get_scheme_label(s)).last
+      scheme.id = scheme['@id']
+      selected_scheme = scheme if  scheme.id.eql?(selected_scheme_id)
+      scheme
+    end.compact
 
-    sorted_labels(schemes_labels).each do |s|
-      next unless main_scheme_label.nil? || s['prefLabel'] != main_scheme_label['prefLabel']
 
-      out  << <<-EOS
-            <li class="doc">
-              #{link_to_scheme(s, selected_scheme_id)}
-            </li>
-      EOS
+    main_scheme = nil
+    if main_scheme_label.nil?
+      children = schemes
+    else
+      main_scheme = OpenStruct.new(main_scheme_label)
+      main_scheme.prefLabel = Array(get_scheme_label(main_scheme_label)).last
+      main_scheme.children = schemes
+      main_scheme.id = main_scheme['@id']
+      main_scheme['expanded?'] = true
+      main_scheme['hasChildren'] = true
+      children = [main_scheme]
     end
-    out
+    root = OpenStruct.new
+    root.children = children
+
+    [root, selected_scheme || main_scheme || root.children.first]
   end
-  def link_to_scheme(scheme, selected_scheme_id)
-    pref_label_lang, pref_label_html = get_scheme_label(scheme)
-    tooltip  = pref_label_lang.to_s.eql?('@none') ? '' :  "data-controller='tooltip' data-tooltip-position-value='right' title='#{pref_label_lang.upcase}'"
-    <<-EOS
-          <a id="#{scheme['@id']}" href="#{scheme_path(scheme['@id'], request_lang)}" 
-            data-turbo="true" data-turbo-frame="scheme" data-schemeid="#{scheme['@id']}"
-           #{tooltip}
-            class="#{selected_scheme_id.eql?(scheme['@id']) ? 'active' : nil}">
-              #{pref_label_html}
-          </a>
-    EOS
+
+  def scheme_tree_child_data(scheme, data, language)
+    href = scheme_path(scheme['@id'], language) rescue  ''
+    data = {
+      schemeid: (scheme['@id'] rescue ''),
+    }.merge(data)
+    [data, href]
   end
+  def scheme_tree_component(root, selected_scheme, language = request_lang, id: nil, data: {}, sub_tree: false, auto_click: false)
+    root.children.sort! { |a, b| (a.prefLabel || a.id).downcase <=> (b.prefLabel || b.id).downcase }
+
+    render TreeViewComponent.new(id: id,  auto_click: auto_click, sub_tree: sub_tree) do |tree_child|
+      root.children.each do |child|
+        next if child.nil?
+        data, href = scheme_tree_child_data(child, data, language)
+
+        tree_child.child(child: child, href: href,
+                         children_href: '#', selected_child: selected_scheme,
+                         target_frame: 'scheme',
+                         data: data) do
+          scheme_tree_component(child, selected_scheme, language, sub_tree: true)
+        end
+      end
+    end
+  end
+
+
+
 end
+
+
+
 
