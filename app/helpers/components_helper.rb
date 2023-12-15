@@ -1,4 +1,21 @@
 module ComponentsHelper
+
+  def tree_link(child:, selected_concept: , href: ,concept_schemes: nil, data: {}, muted: false,  target_frame: nil)
+    selected =  child.id.eql?(selected_concept.id)
+
+    render TreeLinkComponent.new(child: child, href: href,
+                                 active_style: selected && 'active',
+                                 concept_schemes: concept_schemes, muted: muted,
+                                 data: data, target_frame: target_frame
+    ) do
+
+    end
+  end
+
+  def tree_close_icon
+    content_tag(:i, nil, class: "fas fa-chevron-down text-primary", data:{action:'click->simple-tree#toggleChildren'})
+  end
+
   def info_tooltip(text)
     render Display::InfoTooltipComponent.new(text: text)
   end
