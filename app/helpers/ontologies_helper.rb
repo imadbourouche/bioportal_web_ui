@@ -125,12 +125,12 @@ module OntologiesHelper
   def display_contact(contacts)
     contacts.map do |c|
       next unless c.member?(:name) && c.member?(:email)
-  
+
       formatted_name = c[:name].titleize
       formatted_email = c[:email].downcase
       "<span class='date_creation_text'>#{formatted_name}</span> (#{formatted_email})"
     end&.join(" and ")
-  end  
+  end
 
   def count_links(ont_acronym, page_name = 'summary', count = 0)
     ont_url = "/ontologies/#{ont_acronym}"
@@ -145,6 +145,21 @@ module OntologiesHelper
     return '0' if ontology.summaryOnly || count.nil? || count.zero?
 
     count_links(ontology.ontology.acronym, 'classes', count)
+  end
+
+  def metadata_filled_count(submission = @submission_latest, ontology = @ontology)
+    return if submission.nil?
+    
+    reject = [:csvDump, :dataDump, :openSearchDescription, :metrics, :prefLabelProperty, :definitionProperty,
+              :definitionProperty, :synonymProperty, :authorProperty, :hierarchyProperty, :obsoleteProperty,
+              :ontology, :endpoint, :submissionId, :submissionStatus, :uploadFilePath, :context, :links, :ontology]
+    sub_values = submission.to_hash.except(*reject).values
+    count = sub_values.count{|x| !x.blank?}
+    content_tag(:div, class: 'd-flex align-items-center justify-content-center') do
+      content_tag(:span, style:'width: 50px; height: 50px', data: {controller: 'tooltip'}, title: "#{count} of #{sub_values.size}") do
+        render CircleProgressBarComponent.new(count: count , max:  sub_values.size )
+      end  +  content_tag(:span, class: 'mx-1') { "of #{ontology.acronym}  metadata properties are filled"}
+    end.html_safe
   end
 
   # Creates a link based on the status of an ontology submission
@@ -434,19 +449,19 @@ module OntologiesHelper
     return html.html_safe
   end
 
-  def language_selector_tag(name)
-    languages = languages_options
+  def edit_sub_languages_button(ontology = @ontology, submission = @submission_latest)
+    return unless ontology.admin?(session[:user])
 
-    if languages.empty? && @submission_latest
-      return unless  @ontology.admin?(session[:user])
-      content_tag(:div, data: { 'ontology-viewer-tabs-target': 'languageSelector' }, style: "visibility: #{ontology_data_section? ? 'visible' : 'hidden'} ; margin-bottom: -1px;") do
-        edit_submission_property_link(@ontology.acronym, @submission_latest.submissionId, :naturalLanguage, container_id: '') do
-          ("Enable multilingual display " + content_tag(:i, "", class: "fas fa-lg fa-question-circle")).html_safe
-        end
+    link = edit_ontology_submission_path(ontology.acronym, submission.submissionId, properties: 'naturalLanguage', container_id: 'application_modal_content')
+    link_to_modal(nil,  link, class: "btn", id:'fair-details-link',
+                  data: { show_modal_title_value: "Edit natural languages of #{ontology.acronym}", show_modal_size_value: 'modal-md' }) do
+      render ChipButtonComponent.new(type: 'clickable', class: 'admin-background chip_button_small' ) do
+        ("Click here to edit available languages" + content_tag(:i, "", class: "fas fa-lg fa-edit")).html_safe
       end
-    else
-      select_tag name, languages_options, class: '', disabled: !ontology_data_section?, style: "visibility: #{ontology_data_section? ? 'visible' : 'hidden'}; border: none; outline: none;", data: { 'ontology-viewer-tabs-target': 'languageSelector' }
     end
+  end
+  def language_selector_tag(name)
+    content_language_selector(id: name, name: name)
   end
 
   def language_selector_hidden_tag(section)
@@ -454,21 +469,7 @@ module OntologiesHelper
                      data: { controller: "language-change", 'language-change-section-value': section, action: "change->language-change#dispatchLangChangeEvent" }
   end
 
-  def languages_options(submission =  @submission || @submission_latest)
-    current_lang = request_lang.downcase
-    submission_lang = submission_languages(submission)
-    # Transform each language into a select option
-    submission_lang = submission_lang.map do |lang|
-      lang = lang.split('/').last.upcase
-      lang = ISO_639.find(lang.to_s.downcase)&.alpha2 || lang
-      [lang, lang, { selected: lang.eql?(current_lang) }]
-    end
 
-    # Add the option to select all language
-    submission_lang.push(['All', 'all', { selected: current_lang.eql?('all') }])
-
-    options_for_select(submission_lang)
-  end
 
   def display_complex_text(definitions)
     html = ""
