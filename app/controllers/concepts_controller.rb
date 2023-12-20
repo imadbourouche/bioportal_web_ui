@@ -179,8 +179,6 @@ class ConceptsController < ApplicationController
     @concept = @ontology.explore.single_class({full: true}, params[:conceptid])
     concept_not_found(params[:conceptid]) if @concept.nil?
 
-    @immediate_load = true
-
     render partial: "biomixer", layout: false
   end
 
