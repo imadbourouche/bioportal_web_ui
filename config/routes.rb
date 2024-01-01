@@ -94,12 +94,15 @@ Rails.application.routes.draw do
     
   get '' => 'home#index'
 
+  match 'sparql_proxy', to: 'admin#sparql_endpoint', via: [:get, :post]
+
   # Top-level pages
   match '/feedback', to: 'home#feedback', via: [:get, :post]
   get '/account' => 'home#account'
   get '/site_config' => 'home#site_config'
   post '/annotator_recommender_form' => 'home#annotator_recommender_form'
   match '/visits', to: 'visits#index', via: :get
+  get 'statistics/index'
 
   # Error pages
   match "/404", to: "errors#not_found", via: :all
