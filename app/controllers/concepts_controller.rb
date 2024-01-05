@@ -44,16 +44,16 @@ class ConceptsController < ApplicationController
 
     # Get the latest 'ready' submission, or fallback to any latest submission
     # TODO: change the logic here if the fallback will crash the visualization
-      @submission = get_ontology_submission_ready(@ontology)  # application_controller
+    @submission = get_ontology_submission_ready(@ontology)  # application_controller
 
-      @concept = @ontology.explore.single_class({full: true}, params[:id])
+    @concept = @ontology.explore.single_class({full: true}, params[:id])
     concept_not_found(params[:id]) if @concept.nil?
     @schemes = params[:concept_schemes].split(',')
 
     @concept.children = @concept.explore.children(pagesize: 750, concept_schemes: Array(@schemes).join(','), language: request_lang, display: 'prefLabel,obsolete,hasChildren').collection || []
     @concept.children.sort! { |x, y| (x.prefLabel || "").downcase <=> (y.prefLabel || "").downcase } unless @concept.children.empty?
     render turbo_stream: [
-      replace(helpers.child_id(@concept) + '_open_link') { helpers.tree_close_icon },
+      replace(helpers.child_id(@concept) + '_open_link') { TreeLinkComponent.tree_close_icon },
       replace(helpers.child_id(@concept) + '_childs') do
         helpers.concepts_tree_component(@concept, @concept, @ontology.acronym, Array(@schemes), request_lang, sub_tree: true)
       end
@@ -94,12 +94,15 @@ class ConceptsController < ApplicationController
       return
     end
     @ontology = LinkedData::Client::Models::Ontology.find_by_acronym(params[:ontology]).first
-    if @ontology.nil?
+    if @ontology.nil? || @ontology.errors
       ontology_not_found(params[:ontology])
     else
       get_class(params) #application_controller
+      
+      not_found("Missing roots") if @root.nil?
+
       render inline: helpers.concepts_tree_component(@root, @concept,
-                                      @ontology.acronym, params[:concept_schemes].split(','), request_lang,
+                                      @ontology.acronym, Array(params[:concept_schemes]&.split(',')), request_lang,
                                       id: 'concepts_tree_view', auto_click: params[:auto_click] || true)
     end
   end
@@ -187,7 +190,7 @@ class ConceptsController < ApplicationController
 
 
 
-  
+
   def filter_concept_with_no_date(concepts)
     concepts.filter { |c| !concept_date(c).nil?}
   end

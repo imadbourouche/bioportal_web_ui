@@ -1,20 +1,29 @@
 module ComponentsHelper
 
-  def tree_link(child:, selected_concept: , href: ,concept_schemes: nil, data: {}, muted: false,  target_frame: nil)
-    selected =  child.id.eql?(selected_concept.id)
+  def tree_component(root, selected, target_frame:, sub_tree: false, id: nil, auto_click: false, &child_data_generator)
+    root.children.sort! { |a, b| (a.prefLabel || a.id).downcase <=> (b.prefLabel || b.id).downcase }
 
-    render TreeLinkComponent.new(child: child, href: href,
-                                 active_style: selected && 'active',
-                                 concept_schemes: concept_schemes, muted: muted,
-                                 data: data, target_frame: target_frame
-    ) do
+    render TreeViewComponent.new(id: id, sub_tree: sub_tree, auto_click: auto_click) do |tree_child|
+      root.children.each do |child|
+        children_link, data, href = child_data_generator.call(child)
 
+        if children_link.nil? || data.nil? || href.nil?
+          raise ArgumentError, "child_data_generator block did not provide all the child arguements"
+        end
+
+        tree_child.child(child: child, href: href,
+                         children_href: children_link, selected: child.id.eql?(selected&.id),
+                         muted: child.isInActiveScheme&.empty?,
+                         target_frame: target_frame,
+                         data: data) do
+          tree_component(child, selected, target_frame: target_frame, sub_tree: true,
+                         id: id, auto_click: auto_click, &child_data_generator)
+        end
+      end
     end
   end
 
-  def tree_close_icon
-    content_tag(:i, nil, class: "fas fa-chevron-down text-primary", data:{action:'click->simple-tree#toggleChildren'})
-  end
+
 
 
   def chart_component(title: '', type: , labels: , datasets: , index_axis: 'x', show_legend: false)

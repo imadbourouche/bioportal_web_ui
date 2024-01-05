@@ -2,20 +2,18 @@
 
 class TreeLinkComponent < ViewComponent::Base
   include MultiLanguagesHelper
-  include ComponentsHelper
-
-  def initialize(child:, href:, children_href: , selected_child: , data: {}, muted: false, target_frame: nil)
+  def initialize(child:, href:, children_href: , selected: false , data: {}, muted: false, target_frame: nil)
     @child = child
-    @selected_child = selected_child
-    @active_style = child.id.eql?(selected_child&.id) && 'active'
+    @active_style = selected ? 'active' : ''
     #@icons = child.relation_icon(node)
     @muted_style = muted ? 'text-muted' : ''
     @href = href
     @children_link = children_href
-    if @child.prefLabel.nil?
+    label = @child.prefLabel rescue @child.id
+    if label.nil?
       @pref_label_html = child.id.split('/').last
     else
-      pref_label_lang, @pref_label_html = select_language_label(@child.prefLabel)
+      pref_label_lang, @pref_label_html = select_language_label(label)
       pref_label_lang = pref_label_lang.to_s.upcase
       @tooltip = pref_label_lang.eql?("@NONE") ? "" : pref_label_lang
     end
@@ -43,18 +41,21 @@ class TreeLinkComponent < ViewComponent::Base
   end
 
   def border_left
-    !@child.hasChildren && 'pl-3 tree-border-left'
+    !@child.hasChildren  ?  'pl-3 tree-border-left' :  ''
   end
 
   def li_id
     @child.id.eql?('bp_fake_root') ? 'bp_fake_root' : short_uuid
   end
 
+  def self.tree_close_icon
+    "<i class='fas fa-chevron-down text-primary' data-action='click->simple-tree#toggleChildren'></i>".html_safe
+  end
 
   def open_children_link
     return unless @child.hasChildren
     if @child.expanded?
-      tree_close_icon
+      self.class.tree_close_icon
     else
       content_tag('turbo_frame', id: "#{child_id}_open_link") do
         link_to @children_link,

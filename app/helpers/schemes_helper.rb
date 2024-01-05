@@ -79,7 +79,7 @@ module SchemesHelper
     [schemes_labels, main_scheme, selected_scheme]
   end
 
-  def scheme_tree_root(schemes_labels, main_scheme_label, selected_scheme_id)
+  def schemes_tree(schemes_labels, main_scheme_label, selected_scheme_id)
     selected_scheme = nil
     schemes = sorted_labels(schemes_labels).map do |s|
       next nil unless main_scheme_label.nil? || s['prefLabel'] != main_scheme_label['prefLabel']
@@ -105,37 +105,15 @@ module SchemesHelper
     end
     root = OpenStruct.new
     root.children = children
+    selected_scheme = selected_scheme || main_scheme || root.children.first
 
-    [root, selected_scheme || main_scheme || root.children.first]
-  end
 
-  def scheme_tree_child_data(scheme, data, language)
-    href = scheme_path(scheme['@id'], language) rescue  ''
-    data = {
-      schemeid: (scheme['@id'] rescue ''),
-    }.merge(data)
-    [data, href]
-  end
-  def scheme_tree_component(root, selected_scheme, language = request_lang, id: nil, data: {}, sub_tree: false, auto_click: false)
-    root.children.sort! { |a, b| (a.prefLabel || a.id).downcase <=> (b.prefLabel || b.id).downcase }
-
-    render TreeViewComponent.new(id: id,  auto_click: auto_click, sub_tree: sub_tree) do |tree_child|
-      root.children.each do |child|
-        next if child.nil?
-        data, href = scheme_tree_child_data(child, data, language)
-
-        tree_child.child(child: child, href: href,
-                         children_href: '#', selected_child: selected_scheme,
-                         target_frame: 'scheme',
-                         data: data) do
-          scheme_tree_component(child, selected_scheme, language, sub_tree: true)
-        end
-      end
+    tree_component(root, selected_scheme, target_frame: 'scheme', auto_click: true) do |child|
+      href = scheme_path(child['@id'], request_lang) rescue  ''
+      data = { schemeid: (child['@id'] rescue '')}
+      ["#", data, href]
     end
   end
-
-
-
 end
 
 

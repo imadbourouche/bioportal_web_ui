@@ -6,9 +6,9 @@
   - concepts = c.collection.sort_by{|concept| [concept.prefLabel&.capitalize || concept.id]}
   - if concepts && !concepts.empty?
     - concepts.each do  |concept|
-      - children_link, data, href = concept_tree_child_data(@ontology.acronym, concept, [], {}, request_lang)
+      - children_link, data, href = concept_tree_data(@ontology.acronym, concept, request_lang, [])
       = render TreeLinkComponent.new(child: concept, href: href,
-          children_href: '#', selected_child: concept.id.eql?(concepts.first.id) && c.auto_click? ? concept : nil,
+          children_href: '#', selected: concept.id.eql?(concepts.first.id) && c.auto_click?,
           target_frame: 'concept_show', data: data)
   - c.error do
     The Collection didn't define any member

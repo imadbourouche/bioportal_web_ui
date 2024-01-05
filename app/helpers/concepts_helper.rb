@@ -1,32 +1,28 @@
 # frozen_string_literal: true
 module ConceptsHelper
 
-  def concept_tree_child_data(acronym, child, concept_schemes, data, language)
-    href = child.id.eql?('bp_fake_root') ? '#' : "/ontologies/#{acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
-    children_link = "/ajax_concepts/#{acronym}/?conceptid=#{CGI.escape(child.id)}&concept_schemes=#{concept_schemes.join(',')}&language=#{language}"
+  def concept_link(acronym, child, language)
+    child.id.eql?('bp_fake_root') ? '#' : "/ontologies/#{acronym}/concepts/?id=#{CGI.escape(child.id)}&language=#{language}"
+  end
+
+  def concept_children_link(acronym, child, language, concept_schemes)
+    "/ajax_concepts/#{acronym}/?conceptid=#{CGI.escape(child.id)}&concept_schemes=#{concept_schemes.join(',')}&language=#{language}"
+  end
+
+  def concept_tree_data(acronym, child, language, concept_schemes)
+    href = concept_link(acronym, child, language)
+    children_link = concept_children_link(acronym, child, language, concept_schemes)
     data = {
       conceptid: child.id,
       'active-collections-value': child.isInActiveCollection || [],
       'collections-value': child.memberOf || [],
       'skos-collection-colors-target': 'collection',
-    }.merge(data)
+    }
     [children_link, data, href]
   end
-  def concepts_tree_component(root, selected_concept, acronym, concept_schemes, language, sub_tree: false, id: nil, data: {}, auto_click: false)
-    root.children.sort! { |a, b| (a.prefLabel || a.id).downcase <=> (b.prefLabel || b.id).downcase }
-
-    render TreeViewComponent.new(id: id, sub_tree: sub_tree, auto_click: auto_click) do |tree_child|
-      root.children.each do |child|
-        children_link, data, href = concept_tree_child_data(acronym, child, concept_schemes, data, language)
-
-        tree_child.child(child: child, href: href,
-                         children_href: children_link, selected_child: selected_concept,
-                         muted: child.isInActiveScheme&.empty?,
-                         target_frame: 'concept_show',
-                         data: data) do
-          concepts_tree_component(child, selected_concept, acronym, concept_schemes, language, sub_tree: true)
-        end
-      end
+  def concepts_tree_component(root, selected_concept, acronym, concept_schemes, language, sub_tree: false, id: nil, auto_click: false)
+    tree_component(root, selected_concept, target_frame: 'concept_show', sub_tree: sub_tree, id: id, auto_click: auto_click) do |child|
+      concept_tree_data(acronym, child, language, concept_schemes)
     end
   end
 
@@ -69,7 +65,7 @@ module ConceptsHelper
   def default_sub_menu?
     !sub_menu_active?('list') && !sub_menu_active?('date')
   end
-  
+
   def default_sub_menu_class
     "active show" if default_sub_menu?
   end
@@ -112,16 +108,16 @@ module ConceptsHelper
   def concepts_li_list(concepts, auto_click: false)
     out = ''
     concepts.each do |concept|
-      children_link, data, href = concept_tree_child_data(@ontology.acronym, concept, [], {}, request_lang)
+      children_link, data, href = concept_tree_data(@ontology.acronym, concept, request_lang, [])
       out += render TreeLinkComponent.new(child: concept, href: href,
-                                          children_href: '#', selected_child: concept.id.eql?(concepts.first.id) && auto_click ? concept : nil,
+                                          children_href: '#', selected: concept.id.eql?(concepts.first.id) && auto_click,
                                           target_frame: 'concept_show', data: data)
     end
     out
   end
 
   def render_concepts_by_dates(auto_click: false)
-    return if  @concepts_year_month.empty?
+    return if @concepts_year_month.empty?
 
     first_year, first_month_concepts = @concepts_year_month.shift
     first_month, first_concepts = first_month_concepts.shift
