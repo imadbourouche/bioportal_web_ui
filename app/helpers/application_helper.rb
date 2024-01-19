@@ -23,6 +23,13 @@ module ApplicationHelper
                        :oboInOwl => "http://www.geneontology.org/formats/oboInOwl#", :idot => "http://identifiers.org/idot/", :sd => "http://www.w3.org/ns/sparql-service-description#",
                        :cclicense => "http://creativecommons.org/licenses/"}
 
+  def check_resolvability_container(url)
+    turbo_frame_tag("#{escape(url)}_container", src: "/check_url_resolvability?url=#{escape(url)}", loading: "lazy", class: 'd-inline-block') do
+      content_tag(:div, class: 'p-1', data: { controller: 'tooltip' }, title: 'checking resolvability...') do
+        render LoaderComponent.new(small: true)
+      end
+    end
+  end
 
   def ontologies_analytics
     data = LinkedData::Client::Analytics.last_month.onts
@@ -589,14 +596,14 @@ module ApplicationHelper
   def show_advanced_options_button(text: nil, init: nil)
     content_tag(:div, class: "#{init ? 'd-none' : ''} advanced-options-button", 'data-action': 'click->reveal-component#show', 'data-reveal-component-target': 'showButton') do
       inline_svg_tag('icons/settings.svg') +
-      content_tag(:div, text, class: 'text')
+        content_tag(:div, text, class: 'text')
     end
   end
 
   def hide_advanced_options_button(text: nil, init: nil)
     content_tag(:div, class: "#{init ? '' : 'd-none'} advanced-options-button", 'data-action': 'click->reveal-component#hide', 'data-reveal-component-target': 'hideButton') do
       inline_svg_tag('icons/hide.svg') +
-      content_tag(:div, text, class: 'text')
+        content_tag(:div, text, class: 'text')
     end
   end
   
