@@ -58,6 +58,9 @@ application.register("ontology-viewer-tabs", OntologyViewerTabsController)
 import OntoportalAutocompleteController from "./ontoportal_autocomplete_controller"
 application.register("ontoportal-autocomplete", OntoportalAutocompleteController)
 
+import RecommenderController from "./recommender_controller"
+application.register("recommender", RecommenderController)
+
 import ShowFilterCountController from "./show_filter_count_controller"
 application.register("show-filter-count", ShowFilterCountController)
 
@@ -87,5 +90,5 @@ application.register("turbo-frame", TurboFrameController)
 import TurboFrameErrorController from "./turbo_frame_error_controller"
 application.register("turbo-frame-error", TurboFrameErrorController)
 
-import SimpleTreeController from "./simple_tree_controller"
-application.register("simple-tree", SimpleTreeController)
+import SampleTextController from "./sample_text_controller"
+application.register("sample-text", SampleTextController)

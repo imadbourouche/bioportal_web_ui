@@ -573,6 +573,7 @@ module ApplicationHelper
     modified_properties
   end
 
+
   def prefix_property_url(key_string, key = nil)
     namespace_key, _ = RESOLVE_NAMESPACE.find { |_, value| key_string.include?(value) }
 
@@ -582,6 +583,36 @@ module ApplicationHelper
       namespace_key
     else # we don't try to guess the prefix
        nil
+    end
+  end
+
+  def show_advanced_options_button(text: nil, init: nil)
+    content_tag(:div, class: "#{init ? 'd-none' : ''} advanced-options-button", 'data-action': 'click->reveal-component#show', 'data-reveal-component-target': 'showButton') do
+      inline_svg_tag('icons/settings.svg') +
+      content_tag(:div, text, class: 'text')
+    end
+  end
+
+  def hide_advanced_options_button(text: nil, init: nil)
+    content_tag(:div, class: "#{init ? '' : 'd-none'} advanced-options-button", 'data-action': 'click->reveal-component#hide', 'data-reveal-component-target': 'hideButton') do
+      inline_svg_tag('icons/hide.svg') +
+      content_tag(:div, text, class: 'text')
+    end
+  end
+  
+  def insert_sample_text_button(text)
+    content_tag(:div, class:'insert-sample-text-button') do
+      content_tag(:div, class: 'button', 'data-action': 'click->sample-text#annotator_recommender', 'data-sample-text': t("sample_text")) do
+        content_tag(:div, text, class: 'text') +
+        inline_svg_tag('icons/arrow-curved-up.svg')
+      end
+    end
+  end
+
+  def empty_state(text)
+    content_tag(:div, class:'browse-empty-illustration') do
+      inline_svg_tag('empty-box.svg') + 
+      content_tag(:p, text)
     end
   end
 end
