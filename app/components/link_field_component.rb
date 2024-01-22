@@ -2,13 +2,14 @@
 
 class LinkFieldComponent < ViewComponent::Base
 
-  include ApplicationHelper, Turbo::FramesHelper
+  include ApplicationHelper, Turbo::FramesHelper, ComponentsHelper
 
-  def initialize(value:, raw: false, check_resolvability: false)
+  def initialize(value:, raw: false, check_resolvability: false, enable_copy: true)
     super
     @value = value
     @raw = raw
     @check_resolvability = check_resolvability
+    @enable_copy = enable_copy
   end
 
   def internal_link?
@@ -26,11 +27,8 @@ class LinkFieldComponent < ViewComponent::Base
       target = "_blank"
     end
 
-    if @check_resolvability
-      link_to(text, url, target: target) + content_tag(:span, check_resolvability_container(url), style: 'display: inline-block;')
-    else
-      link_to(text, url, target: target)
-    end
-
+    tag = link_to(text, url, target: target, class: 'text-truncate', style: "max-width: 330px; display: inline-flex;")
+    link_to_with_actions(tag, url: url, copy: @enable_copy, check_resolvability: @check_resolvability)
   end
+
 end

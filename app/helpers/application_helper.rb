@@ -31,6 +31,7 @@ module ApplicationHelper
     end
   end
 
+
   def ontologies_analytics
     data = LinkedData::Client::Analytics.last_month.onts
     data.map{|x| [x[:ont].to_s, x[:views]]}.to_h
