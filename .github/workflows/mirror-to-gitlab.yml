@@ -1,0 +1,33 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - main
+      - stage
+      - test
+      - gitlab_ci_cd
+
+jobs:
+  push-to-gitlab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # disable shallow clone to get full history
+
+      - name: Push current branch to GitLab
+        env:
+          GITLAB_URL: ${{ secrets.GITLAB_URL }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_REPO: ${{ secrets.GITLAB_REPO }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config --global user.name "${GITLAB_USERNAME}"
+          git config --global user.email "${GITLAB_USERNAME}@users.noreply.gitlab.com"
+
+          git remote add gitlab https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@${GITLAB_URL#https://}/${GITLAB_REPO}.git
+
+          git push -u --force gitlab HEAD:${BRANCH}
