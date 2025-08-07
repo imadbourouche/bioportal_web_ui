@@ -14,7 +14,8 @@ jobs:
         run: |
           curl -X POST "$GITLAB_TRIGGER_URL" \
             -F token="$GITLAB_TRIGGER_TOKEN" \
-            -F ref=main
+            -F ref=main \
+            -F "variables[DEPLOY_ENV]=stage"
         env:
           GITLAB_TRIGGER_URL: ${{ secrets.GITLAB_TRIGGER_URL }}
           GITLAB_TRIGGER_TOKEN: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
