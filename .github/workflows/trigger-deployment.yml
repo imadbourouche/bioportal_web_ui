@@ -1,0 +1,20 @@
+# .github/workflows/trigger-deployment.yml
+name: Trigger GitLab Deploy Project
+
+on:
+  push:
+    branches:
+      - gitlab_api_trigger
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitLab deployment_agroportal pipeline
+        run: |
+          curl -X POST "$GITLAB_TRIGGER_URL" \
+            -F token="$GITLAB_TRIGGER_TOKEN" \
+            -F ref=main
+        env:
+          GITLAB_TRIGGER_URL: ${{ secrets.GITLAB_TRIGGER_URL }}
+          GITLAB_TRIGGER_TOKEN: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
