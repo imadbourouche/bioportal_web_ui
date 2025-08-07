@@ -12,8 +12,10 @@ jobs:
   push-to-gitlab:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout current branch
+      - name: Checkout full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # disable shallow clone to get full history
 
       - name: Push current branch to GitLab
         env:
