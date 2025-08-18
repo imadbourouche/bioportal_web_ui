@@ -13,6 +13,11 @@ jobs:
   trigger-deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: test connectivity
+        run: |
+          nslookup forge-dsi.dcidf.inrae.fr || true
+          curl -v https://forge-dsi.dcidf.inrae.fr/ || true
+
       - name: Trigger GitLab deployment_agroportal pipeline
         run: |
           curl --fail --silent --show-error -X POST "$GITLAB_TRIGGER_URL" \
