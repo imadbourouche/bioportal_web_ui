@@ -4,6 +4,9 @@ name: Trigger GitLab Deploy Project
 on:
   push:
     branches:
+      - main
+      - stage
+      - devlopment
       - gitlab_api_trigger
 
 jobs:
@@ -12,7 +15,7 @@ jobs:
     steps:
       - name: Trigger GitLab deployment_agroportal pipeline
         run: |
-          curl -X POST "$GITLAB_TRIGGER_URL" \
+          curl --fail --silent --show-error -X POST "$GITLAB_TRIGGER_URL" \
             -F token="$GITLAB_TRIGGER_TOKEN" \
             -F ref=main \
             -F "variables[DEPLOY_ENV]=stage"
